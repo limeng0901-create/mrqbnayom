@@ -1,0 +1,19 @@
+{
+  "name": "hunchacha",
+  "version": "1.0.0",
+  "description": "婚查查 - 专业命理婚配APP",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx serve",
+    "build": "echo 'Build completed'",
+    "ios": "npx cap copy ios && npx cap open ios"
+  },
+  "keywords": ["capacitor", "hunchacha"],
+  "author": "limeng0901-create",
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/core": "^6.1.0",
+    "@capacitor/cli": "^6.1.0",
+    "@capacitor/ios": "^6.1.0"
+  }
+}
