@@ -1,0 +1,3265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#8b5cf6">
+    <title>婚查查</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#8b5cf6',
+                        secondary: '#a78bfa',
+                        accent: '#c4b5fd',
+                        dark: '#1e1b4b',
+                        light: '#f5f3ff',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-size: 14px; overflow-x: hidden; background: linear-gradient(180deg, #f5f3ff 0%, #e9d5ff 100%); min-height: 100vh; }
+        .linear-card { background: linear-gradient(145deg, #ffffff 0%, #faf5ff 100%); border: 1px solid #e9d5ff; box-shadow: 0 4px 20px rgba(139,92,246,0.1); }
+        .linear-btn { background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%); box-shadow: 0 4px 15px rgba(139,92,246,0.3); }
+        .linear-btn:hover { background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139,92,246,0.4); }
+        .linear-btn:active { transform: translateY(0); }
+        .nfc-pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.7;transform:scale(1.05);} }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);} }
+        button { touch-action: manipulation; transition: all 0.2s ease; }
+        .chart-container { position: relative; width: 100%; max-width: 320px; margin: 0 auto; aspect-ratio: 1/1; }
+        .chart-svg { width: 100%; height: 100%; }
+        .palace-text { font-size: 9px; text-anchor: middle; dominant-baseline: middle; }
+        .star-text { font-size: 8px; font-weight: bold; text-anchor: middle; dominant-baseline: middle; }
+        .compare-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .compare-table th, .compare-table td { border: 1px solid #e9d5ff; padding: 8px 4px; text-align: center; }
+        .compare-table th { background: linear-gradient(135deg, #f5f3ff 0%, #e9d5ff 100%); font-weight: bold; color: #7c3aed; }
+        .score-high { color: #10b981; font-weight: bold; }
+        .score-medium { color: #f59e0b; }
+        .score-low { color: #ef4444; }
+        .input-field { background: #faf5ff; border: 1px solid #e9d5ff; transition: all 0.2s ease; }
+        .input-field:focus { background: #ffffff; border-color: #a78bfa; box-shadow: 0 0 0 3px rgba(167,139,250,0.2); outline: none; }
+        .nav-item { transition: all 0.2s ease; }
+        .nav-item:hover { background: rgba(255,255,255,0.2); }
+        .nav-item.active { background: rgba(255,255,255,0.3); font-weight: bold; }
+        /* ===== 自定义日期选择器 ===== */
+        .date-picker-wrap { position: relative; }
+        .date-picker-trigger {
+            width: 100%; text-align: left; cursor: pointer;
+            background: #faf5ff; border: 1px solid #e9d5ff;
+            padding: 12px 16px; border-radius: 12px;
+            font-size: 14px; color: #1f2937;
+            transition: all 0.2s ease;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .date-picker-trigger:active, .date-picker-trigger:focus {
+            background: #fff; border-color: #a78bfa;
+            box-shadow: 0 0 0 3px rgba(167,139,250,0.2);
+            outline: none;
+        }
+        .date-picker-placeholder { color: #9ca3af; }
+        /* 弹出层 */
+        .date-picker-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+            z-index: 9999; display: flex; align-items: flex-end; justify-content: center;
+        }
+        .date-picker-panel {
+            background: white; border-radius: 20px 20px 0 0;
+            width: 100%; max-width: 420px; padding: 0 0 env(safe-area-inset-bottom);
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp { from{transform:translateY(100%);}to{transform:translateY(0);} }
+        .dp-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px 12px;
+            border-bottom: 1px solid #f3e8ff;
+        }
+        .dp-header-title { font-size: 15px; font-weight: 600; color: #1e1b4b; }
+        .dp-close { background: none; border: none; font-size: 24px; color: #a78bfa; padding: 0 4px; cursor: pointer; line-height: 1; }
+        .dp-body { padding: 16px 20px 20px; }
+        /* 年份控制 */
+        .dp-year-row {
+            display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 16px;
+        }
+        .dp-year-display {
+            font-size: 28px; font-weight: 700; color: #7c3aed;
+            min-width: 80px; text-align: center;
+            background: linear-gradient(135deg, #7c3aed, #a78bfa);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .dp-year-btn {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: #f5f3ff; border: 1.5px solid #e9d5ff;
+            color: #7c3aed; font-size: 20px; font-weight: bold;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s ease; user-select: none;
+        }
+        .dp-year-btn:active { background: #7c3aed; color: white; transform: scale(0.93); }
+        .dp-year-fast-btn {
+            width: 44px; height: 36px; border-radius: 8px;
+            background: #faf5ff; border: 1.5px solid #e9d5ff;
+            color: #a78bfa; font-size: 12px; font-weight: bold;
+            cursor: pointer; transition: all 0.15s ease;
+        }
+        .dp-year-fast-btn:active { background: #7c3aed; color: white; }
+        /* 月日选择 */
+        .dp-m-d-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .dp-select-wrap { display: flex; flex-direction: column; gap: 6px; }
+        .dp-select-label { font-size: 11px; color: #a78bfa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .dp-native-select {
+            width: 100%; padding: 10px 12px; border-radius: 10px;
+            background: #faf5ff; border: 1.5px solid #e9d5ff;
+            color: #1e1b4b; font-size: 15px; font-weight: 500;
+            -webkit-appearance: none; appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23a78bfa' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 12px center;
+            cursor: pointer;
+        }
+        .dp-native-select:focus { outline: none; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+        /* 普通select统一样式 - 兼容Android WebView */
+        select.input-field {
+            background-color: #faf5ff;
+            border: 1px solid #e9d5ff;
+            color: #1f2937;
+            font-size: 14px;
+            padding: 12px 40px 12px 16px;
+            border-radius: 12px;
+            width: 100%;
+            cursor: pointer;
+            /* 使用原生appearance以确保select可点击 */
+            -webkit-appearance: default;
+            appearance: default;
+            /* 自定义下拉箭头覆盖 */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%238b5cf6' d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+        }
+        select.input-field:focus {
+            background-color: #ffffff;
+            border-color: #a78bfa;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(167,139,250,0.2);
+        }
+        select.input-field option {
+            padding: 10px;
+            background: #ffffff;
+        }
+        /* 快捷年份 */
+        .dp-quick-years { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; }
+        .dp-quick-y {
+            padding: 5px 10px; border-radius: 16px;
+            background: #f5f3ff; border: 1px solid #e9d5ff;
+            color: #7c3aed; font-size: 12px; font-weight: 600;
+            cursor: pointer; transition: all 0.15s ease;
+        }
+        .dp-quick-y:active, .dp-quick-y.selected { background: #7c3aed; color: white; }
+        /* 确认按钮 */
+        .dp-confirm-btn {
+            width: 100%; padding: 14px; border-radius: 14px;
+            background: linear-gradient(135deg, #7c3aed, #a78bfa);
+            color: white; font-size: 16px; font-weight: bold;
+            border: none; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(124,58,237,0.3);
+            transition: all 0.2s ease;
+        }
+        .dp-confirm-btn:active { transform: translateY(1px); box-shadow: 0 2px 8px rgba(124,58,237,0.3); }
+        /* 年份按钮禁用态 */
+        .dp-year-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        /* 隐藏类 - 确保生效 */
+        .hidden { display: none !important; }
+        /* 按钮loading状态 */
+        .btn-loading { opacity: 0.7; pointer-events: none; }
+        .btn-loading::after { content: '...'; margin-left: 4px; }
+        /* Toast提示 */
+        .toast-container {
+            position: fixed; top: 80px; left: 50%; transform: translateX(-50%);
+            z-index: 10000; width: calc(100% - 32px); max-width: 320px;
+        }
+        .toast {
+            padding: 14px 20px; border-radius: 12px; text-align: center;
+            font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 1.7s forwards;
+        }
+        .toast-success { background: linear-gradient(135deg, #10b981, #34d399); color: white; }
+        .toast-error { background: linear-gradient(135deg, #ef4444, #f87171); color: white; }
+        .toast-info { background: linear-gradient(135deg, #3b82f6, #60a5fa); color: white; }
+        @keyframes toastIn { from{opacity:0;transform:translateY(-20px);}to{opacity:1;transform:translateY(0);} }
+        @keyframes toastOut { from{opacity:1;}to{opacity:0;transform:translateY(-10px);} }
+        /* 用户切换按钮 */
+        .user-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: 20px;
+            background: rgba(255,255,255,0.2); color: white;
+            font-size: 13px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        .user-badge:hover { background: rgba(255,255,255,0.3); }
+        .user-dropdown {
+            position: absolute; top: 100%; right: 0; margin-top: 8px;
+            background: white; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            min-width: 200px; max-height: 300px; overflow-y: auto;
+            z-index: 100;
+        }
+        .user-dropdown-item {
+            padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+            cursor: pointer; transition: background 0.15s ease;
+            border-bottom: 1px solid #f3e8ff;
+        }
+        .user-dropdown-item:last-child { border-bottom: none; }
+        .user-dropdown-item:hover { background: #f5f3ff; }
+        .user-dropdown-item.active { background: #ede9fe; }
+        .user-dropdown-item .user-name { font-weight: 600; color: #1e1b4b; }
+        .user-dropdown-item .user-meta { font-size: 11px; color: #9ca3af; }
+        .user-dropdown-item .check-icon { color: #10b981; font-weight: bold; }
+    </style>
+</head>
+<body class="font-sans">
+    <!-- Toast容器 -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- 导航栏 -->
+    <nav class="sticky top-0 z-50 bg-gradient-to-r from-primary to-secondary shadow-lg">
+        <div class="w-full px-4 py-3">
+            <div class="flex justify-between items-center mb-3">
+                <h1 class="text-2xl font-bold text-white tracking-wide">婚查查</h1>
+                <div class="relative">
+                    <div id="user-badge" class="user-badge" onclick="toggleUserDropdown()">
+                        <span id="current-user-name">访客</span>
+                        <span>▼</span>
+                    </div>
+                    <div id="user-dropdown" class="user-dropdown hidden"></div>
+                </div>
+            </div>
+            <div class="flex space-x-1 overflow-x-auto pb-1">
+                <button id="nav-home"    onclick="showTab('home')"    class="nav-item active px-3 py-1.5 text-white text-sm rounded-lg whitespace-nowrap">首页</button>
+                <button id="nav-profile" onclick="showTab('profile')" class="nav-item px-3 py-1.5 text-white text-sm rounded-lg whitespace-nowrap">命格</button>
+                <button id="nav-nfc"     onclick="showTab('nfc')"     class="nav-item px-3 py-1.5 text-white text-sm rounded-lg whitespace-nowrap">碰一碰</button>
+                <button id="nav-match"   onclick="showTab('match')"   class="nav-item px-3 py-1.5 text-white text-sm rounded-lg whitespace-nowrap">匹配</button>
+                <button id="nav-compare" onclick="showTab('compare')" class="nav-item px-3 py-1.5 text-white text-sm rounded-lg whitespace-nowrap">对比</button>
+                <button id="nav-data"    onclick="showTab('data')"    class="nav-item px-3 py-1.5 text-white text-sm rounded-lg whitespace-nowrap">数据</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="w-full px-4 py-6 pb-24">
+        <!-- 首页 -->
+        <div id="home-tab" class="tab-content fade-in">
+            <div class="w-full">
+                <!-- Hero Banner -->
+                <div class="relative rounded-3xl overflow-hidden mb-6" style="background:linear-gradient(135deg,#7c3aed 0%,#a78bfa 50%,#c4b5fd 100%);">
+                    <div class="px-6 pt-8 pb-6">
+                        <div class="text-5xl mb-3">💑</div>
+                        <h2 class="text-2xl font-bold text-white mb-1">婚配领域的企查查</h2>
+                        <p class="text-white/80 text-sm mb-5">三体系专业命理 · 科学择偶决策</p>
+                        <div class="flex gap-3">
+                            <button onclick="showTab('match')" class="bg-white text-primary font-bold px-5 py-2.5 rounded-xl text-sm shadow-lg">立即匹配</button>
+                            <button onclick="showTab('profile')" class="bg-white/20 text-white font-bold px-5 py-2.5 rounded-xl text-sm backdrop-blur">录入命格</button>
+                        </div>
+                    </div>
+                    <!-- 装饰圆 -->
+                    <div class="absolute top-0 right-0 w-32 h-32 rounded-full opacity-20" style="background:white;transform:translate(30%,-30%);"></div>
+                    <div class="absolute bottom-0 right-8 w-20 h-20 rounded-full opacity-10" style="background:white;transform:translateY(40%);"></div>
+                </div>
+
+                <!-- 统计栏 -->
+                <div class="grid grid-cols-3 gap-3 mb-6">
+                    <div class="linear-card rounded-2xl p-4 text-center">
+                        <div class="text-2xl font-bold text-primary">3</div>
+                        <div class="text-xs text-gray-500 mt-1">命理体系</div>
+                    </div>
+                    <div class="linear-card rounded-2xl p-4 text-center">
+                        <div class="text-2xl font-bold text-primary">5</div>
+                        <div class="text-xs text-gray-500 mt-1">最多对比</div>
+                    </div>
+                    <div class="linear-card rounded-2xl p-4 text-center">
+                        <div class="text-2xl font-bold text-primary">∞</div>
+                        <div class="text-xs text-gray-500 mt-1">本地存储</div>
+                    </div>
+                </div>
+
+                <!-- 功能特性卡片 -->
+                <div class="grid grid-cols-1 gap-4 mb-6">
+                    <div class="linear-card rounded-2xl p-5 cursor-pointer" onclick="showTab('profile')">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-2xl flex-shrink-0">🔮</div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-dark text-base">八字五行</h3>
+                                <p class="text-gray-500 text-xs mt-0.5">节气精准排盘 · 地支藏干本气/中气/余气</p>
+                            </div>
+                            <div class="text-gray-300 text-lg">›</div>
+                        </div>
+                    </div>
+                    <div class="linear-card rounded-2xl p-5 cursor-pointer" onclick="showTab('profile')">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-secondary to-accent flex items-center justify-center text-2xl flex-shrink-0">⭐</div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-dark text-base">紫微斗数</h3>
+                                <p class="text-gray-500 text-xs mt-0.5">14主星完整排盘 · 命宫/夫妻宫可视化</p>
+                            </div>
+                            <div class="text-gray-300 text-lg">›</div>
+                        </div>
+                    </div>
+                    <div class="linear-card rounded-2xl p-5 cursor-pointer" onclick="showTab('profile')">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-accent to-primary flex items-center justify-center text-2xl flex-shrink-0">🌌</div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-dark text-base">西洋星盘</h3>
+                                <p class="text-gray-500 text-xs mt-0.5">太阳/月亮/上升/金星/火星落位分析</p>
+                            </div>
+                            <div class="text-gray-300 text-lg">›</div>
+                        </div>
+                    </div>
+                    <div class="linear-card rounded-2xl p-5 cursor-pointer" onclick="showTab('nfc')">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-warning to-warning/70 flex items-center justify-center text-2xl flex-shrink-0">📡</div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-dark text-base">NFC 碰一碰</h3>
+                                <p class="text-gray-500 text-xs mt-0.5">两机相碰即刻交换命格 · 自动生成报告</p>
+                            </div>
+                            <div class="text-gray-300 text-lg">›</div>
+                        </div>
+                    </div>
+                    <div class="linear-card rounded-2xl p-5 cursor-pointer" onclick="showTab('compare')">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-success to-success/70 flex items-center justify-center text-2xl flex-shrink-0">📊</div>
+                            <div class="flex-1">
+                                <h3 class="font-bold text-dark text-base">多对象对比</h3>
+                                <p class="text-gray-500 text-xs mt-0.5">最多5人横向对比 · 综合评分自动排名</p>
+                            </div>
+                            <div class="text-gray-300 text-lg">›</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 底部提示 -->
+                <div class="text-center py-4">
+                    <p class="text-xs text-gray-400">🔒 所有数据仅存储在本地 · 保护您的隐私安全</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 我的命格 -->
+        <div id="profile-tab" class="tab-content hidden fade-in">
+            <div class="w-full">
+                <h2 class="text-2xl font-bold text-center text-dark mb-6">我的命格档案</h2>
+                <div class="linear-card rounded-2xl p-5 mb-5">
+                    <!-- 姓名 -->
+                    <div class="mb-4">
+                        <label class="text-primary font-medium text-sm mb-2 block">姓名</label>
+                        <input type="text" id="name" class="input-field w-full px-4 py-3 rounded-xl text-sm" placeholder="请输入姓名">
+                    </div>
+                    <!-- 性别 -->
+                    <div class="mb-4">
+                        <label class="text-primary font-medium text-sm mb-2 block">性别</label>
+                        <select id="gender" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                            <option value="1">男</option>
+                            <option value="2">女</option>
+                        </select>
+                    </div>
+                    <!-- 出生日期 -->
+                    <div class="mb-4">
+                        <label class="text-primary font-medium text-sm mb-2 block">出生日期（阳历）</label>
+                        <input type="date" id="birthdate" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                    </div>
+                    <!-- 出生时辰 -->
+                    <div class="mb-4">
+                        <label class="text-primary font-medium text-sm mb-2 block">出生时辰</label>
+                        <select id="birthtime" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                            <option value="0">子时 23:00-01:00</option>
+                            <option value="1">丑时 01:00-03:00</option>
+                            <option value="2">寅时 03:00-05:00</option>
+                            <option value="3">卯时 05:00-07:00</option>
+                            <option value="4">辰时 07:00-09:00</option>
+                            <option value="5">巳时 09:00-11:00</option>
+                            <option value="6">午时 11:00-13:00</option>
+                            <option value="7">未时 13:00-15:00</option>
+                            <option value="8">申时 15:00-17:00</option>
+                            <option value="9">酉时 17:00-19:00</option>
+                            <option value="10">戌时 19:00-21:00</option>
+                            <option value="11">亥时 21:00-23:00</option>
+                        </select>
+                    </div>
+                    <!-- 出生城市/经度 -->
+                    <div class="mb-4">
+                        <label class="text-primary font-medium text-sm mb-2 block">出生城市（真太阳时）</label>
+                        <input type="hidden" id="birth-lng" value="120">
+                        <select id="birth-city" class="input-field w-full px-4 py-3 rounded-xl text-sm" onchange="onCityChange('birth', this.value)">
+                            <option value="">-- 选择城市 --</option>
+                            <optgroup label="🇨🇳 华北东北">
+                                <option value="116.40">北京</option>
+                                <option value="117.20">天津</option>
+                                <option value="114.48">石家庄</option>
+                                <option value="112.55">太原</option>
+                                <option value="111.65">呼和浩特</option>
+                                <option value="123.43">沈阳</option>
+                                <option value="125.32">长春</option>
+                                <option value="126.63">哈尔滨</option>
+                            </optgroup>
+                            <optgroup label="🇨🇳 华东">
+                                <option value="121.47" selected>上海</option>
+                                <option value="120.19">杭州</option>
+                                <option value="118.78">南京</option>
+                                <option value="119.30">福州</option>
+                                <option value="116.99">济南</option>
+                                <option value="115.89">南昌</option>
+                                <option value="117.28">合肥</option>
+                            </optgroup>
+                            <optgroup label="🇨🇳 华中华南">
+                                <option value="114.30">武汉</option>
+                                <option value="112.98">长沙</option>
+                                <option value="113.65">郑州</option>
+                                <option value="113.27">广州</option>
+                                <option value="114.07">深圳</option>
+                                <option value="108.33">南宁</option>
+                                <option value="110.35">海口</option>
+                            </optgroup>
+                            <optgroup label="🇨🇳 西南西北">
+                                <option value="104.07">成都</option>
+                                <option value="106.55">重庆</option>
+                                <option value="102.71">昆明</option>
+                                <option value="106.71">贵阳</option>
+                                <option value="91.11">拉萨</option>
+                                <option value="108.95">西安</option>
+                                <option value="87.62">乌鲁木齐</option>
+                            </optgroup>
+                            <optgroup label="🇭🇰🇹🇼">
+                                <option value="114.17">香港</option>
+                                <option value="113.55">澳门</option>
+                                <option value="121.56">台北</option>
+                            </optgroup>
+                            <optgroup label="🌏 东亚">
+                                <option value="139.69">东京</option>
+                                <option value="135.50">大阪</option>
+                                <option value="126.98">首尔</option>
+                                <option value="103.82">新加坡</option>
+                                <option value="100.52">曼谷</option>
+                            </optgroup>
+                            <optgroup label="🌍 欧洲">
+                                <option value="0.13">伦敦</option>
+                                <option value="2.35">巴黎</option>
+                                <option value="13.41">柏林</option>
+                                <option value="12.50">罗马</option>
+                            </optgroup>
+                            <optgroup label="🌎 美洲">
+                                <option value="-74.01">纽约</option>
+                                <option value="-118.24">洛杉矶</option>
+                                <option value="-122.42">旧金山</option>
+                                <option value="-79.38">多伦多</option>
+                            </optgroup>
+                        </select>
+                        <p class="text-xs text-gray-400 mt-1">选择出生城市，自动计算真太阳时</p>
+                    </div>
+                    <!-- 确认按钮 -->
+                    <button id="btn-confirm-profile" onclick="generateProfile()" class="linear-btn w-full text-white font-bold py-4 rounded-xl mt-2">
+                        生成完整命格
+                    </button>
+                </div>
+                <div id="profile-result" class="hidden">
+                    <div class="linear-card rounded-2xl p-5 mb-5">
+                        <div id="basic-info" class="space-y-3"></div>
+                        <button id="btn-save-profile" class="w-full mt-4 bg-gradient-to-r from-success to-success/80 text-white font-bold py-3 rounded-xl">保存到本地</button>
+                    </div>
+                    <div class="linear-card rounded-2xl p-5 mb-5">
+                        <h3 class="font-bold text-center text-dark mb-4">紫微斗数命盘</h3>
+                        <div class="chart-container">
+                            <svg id="ziwei-chart" class="chart-svg" viewBox="0 0 300 300"></svg>
+                        </div>
+                    </div>
+                    <div class="linear-card rounded-2xl p-5 mb-5">
+                        <h3 class="font-bold text-center text-dark mb-4">西洋星盘</h3>
+                        <div class="chart-container">
+                            <svg id="astrology-chart" class="chart-svg" viewBox="0 0 300 300"></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 碰一碰NFC -->
+        <div id="nfc-tab" class="tab-content hidden fade-in">
+            <div class="w-full">
+                <h2 class="text-2xl font-bold text-center text-dark mb-6">📱 碰一碰匹配</h2>
+                <div class="linear-card rounded-2xl p-6 text-center mb-5">
+                    <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                        <div class="text-5xl">📡</div>
+                    </div>
+                    <p class="text-gray-600 mb-6">双方手机贴近，自动交换命格<br>并生成综合匹配报告</p>
+                    <div class="space-y-3">
+                        <button id="nfcStartBtn" onclick="startNFCPairing()" class="linear-btn w-full text-white font-bold py-4 rounded-xl">开启NFC接收</button>
+                        <button id="nfcSendBtn" onclick="sendMyProfileViaNFC()" class="bg-white text-primary font-bold py-4 rounded-xl border-2 border-primary w-full" disabled>发送我的命格</button>
+                    </div>
+                    <div id="nfcReadyArea" class="hidden mt-6 p-5 border-2 border-dashed border-primary rounded-xl bg-primary/5">
+                        <p class="text-primary font-medium nfc-pulse">🔵 正在监听，靠近对方手机...</p>
+                    </div>
+                    <div id="nfcResultArea" class="hidden mt-6 p-4 bg-light rounded-xl text-left">
+                        <p class="font-bold text-primary text-sm mb-2">已接收对方资料</p>
+                        <div id="nfcResultText" class="text-gray-600 text-xs mb-3"></div>
+                        <button onclick="generateMatchFromNFC()" class="w-full bg-gradient-to-r from-success to-success/80 text-white py-3 rounded-xl text-sm font-bold">一键生成综合匹配报告</button>
+                    </div>
+                </div>
+                <div class="linear-card rounded-2xl p-5">
+                    <h3 class="font-bold text-primary text-sm mb-3">备用：手动粘贴</h3>
+                    <textarea id="nfcManualInput" class="input-field w-full h-28 p-4 rounded-xl text-xs" placeholder="粘贴对方命格JSON"></textarea>
+                    <button onclick="generateMatchFromManual()" class="w-full mt-3 bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-xl text-sm font-bold">导入并综合匹配</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 综合匹配 -->
+        <div id="match-tab" class="tab-content hidden fade-in">
+            <div class="w-full">
+                <h2 class="text-2xl font-bold text-center text-dark mb-6">三维度综合婚配</h2>
+                
+                <!-- 我方信息 -->
+                <div class="linear-card rounded-2xl p-5 mb-4">
+                    <h4 class="font-bold text-primary text-sm mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center">1</span>
+                        我方信息
+                    </h4>
+                    <div class="space-y-3">
+                        <!-- 姓名 -->
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">姓名</label>
+                            <input type="text" id="p1-name" placeholder="请输入姓名" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                        </div>
+                        <!-- 性别 -->
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">性别</label>
+                            <select id="p1-gender" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                                <option value="1">男</option><option value="2">女</option>
+                            </select>
+                        </div>
+                        <!-- 出生日期 -->
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">出生日期</label>
+                            <input type="date" id="p1-birthdate" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                        </div>
+                        <!-- 出生时辰 -->
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">出生时辰</label>
+                            <select id="p1-birthtime" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                                <option value="0">子时 23:00-01:00</option>
+                                <option value="1">丑时 01:00-03:00</option>
+                                <option value="2">寅时 03:00-05:00</option>
+                                <option value="3">卯时 05:00-07:00</option>
+                                <option value="4">辰时 07:00-09:00</option>
+                                <option value="5">巳时 09:00-11:00</option>
+                                <option value="6">午时 11:00-13:00</option>
+                                <option value="7">未时 13:00-15:00</option>
+                                <option value="8">申时 15:00-17:00</option>
+                                <option value="9">酉时 17:00-19:00</option>
+                                <option value="10">戌时 19:00-21:00</option>
+                                <option value="11">亥时 21:00-23:00</option>
+                            </select>
+                        </div>
+                        <!-- 出生城市/经度 -->
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">出生城市（自动计算真太阳时）</label>
+                            <input type="hidden" id="p1-lng" value="120">
+                            <select id="p1-city" class="input-field w-full px-4 py-3 rounded-xl text-sm" onchange="onCityChange('p1', this.value)">
+                                <option value="">-- 选择城市 --</option>
+                                <optgroup label="🇨🇳 华北东北">
+                                    <option value="116.40">北京</option>
+                                    <option value="117.20">天津</option>
+                                    <option value="114.48">石家庄</option>
+                                    <option value="112.55">太原</option>
+                                    <option value="111.65">呼和浩特</option>
+                                    <option value="123.43">沈阳</option>
+                                    <option value="125.32">长春</option>
+                                    <option value="126.63">哈尔滨</option>
+                                </optgroup>
+                                <optgroup label="🇨🇳 华东">
+                                    <option value="121.47" selected>上海</option>
+                                    <option value="120.19">杭州</option>
+                                    <option value="118.78">南京</option>
+                                    <option value="119.30">福州</option>
+                                    <option value="116.99">济南</option>
+                                    <option value="115.89">南昌</option>
+                                    <option value="117.28">合肥</option>
+                                </optgroup>
+                                <optgroup label="🇨🇳 华中华南">
+                                    <option value="114.30">武汉</option>
+                                    <option value="112.98">长沙</option>
+                                    <option value="113.65">郑州</option>
+                                    <option value="113.27">广州</option>
+                                    <option value="114.07">深圳</option>
+                                    <option value="108.33">南宁</option>
+                                    <option value="110.35">海口</option>
+                                </optgroup>
+                                <optgroup label="🇨🇳 西南西北">
+                                    <option value="104.07">成都</option>
+                                    <option value="106.55">重庆</option>
+                                    <option value="102.71">昆明</option>
+                                    <option value="106.71">贵阳</option>
+                                    <option value="91.11">拉萨</option>
+                                    <option value="108.95">西安</option>
+                                    <option value="87.62">乌鲁木齐</option>
+                                </optgroup>
+                                <optgroup label="🇭🇰🇹🇼">
+                                    <option value="114.17">香港</option>
+                                    <option value="113.55">澳门</option>
+                                    <option value="121.56">台北</option>
+                                </optgroup>
+                                <optgroup label="🌏 东亚">
+                                    <option value="139.69">东京</option>
+                                    <option value="135.50">大阪</option>
+                                    <option value="126.98">首尔</option>
+                                    <option value="103.82">新加坡</option>
+                                    <option value="100.52">曼谷</option>
+                                </optgroup>
+                                <optgroup label="🌍 欧洲">
+                                    <option value="0.13">伦敦</option>
+                                    <option value="2.35">巴黎</option>
+                                    <option value="13.41">柏林</option>
+                                    <option value="12.50">罗马</option>
+                                </optgroup>
+                                <optgroup label="🌎 美洲">
+                                    <option value="-74.01">纽约</option>
+                                    <option value="-118.24">洛杉矶</option>
+                                    <option value="-122.42">旧金山</option>
+                                    <option value="-79.38">多伦多</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- 我方确认按钮 -->
+                    <button onclick="confirmP1()" id="btn-confirm-p1" class="w-full mt-4 bg-primary/10 text-primary font-bold py-3 rounded-xl text-sm">
+                        确认录入 ✓
+                    </button>
+                </div>
+                
+                <!-- 对方信息 -->
+                <div class="linear-card rounded-2xl p-5 mb-4">
+                    <h4 class="font-bold text-secondary text-sm mb-4 flex items-center gap-2">
+                        <span class="w-6 h-6 rounded-full bg-secondary text-white text-xs flex items-center justify-center">2</span>
+                        对方信息
+                    </h4>
+                    <div class="space-y-3">
+                        <!-- 姓名 -->
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">姓名</label>
+                            <input type="text" id="p2-name" placeholder="请输入姓名" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                        </div>
+                        <!-- 性别 -->
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">性别</label>
+                            <select id="p2-gender" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                                <option value="2">女</option><option value="1">男</option>
+                            </select>
+                        </div>
+                        <!-- 出生日期 -->
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">出生日期</label>
+                            <input type="date" id="p2-birthdate" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                        </div>
+                        <!-- 出生时辰 -->
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">出生时辰</label>
+                            <select id="p2-birthtime" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                                <option value="0">子时 23:00-01:00</option>
+                                <option value="1">丑时 01:00-03:00</option>
+                                <option value="2">寅时 03:00-05:00</option>
+                                <option value="3">卯时 05:00-07:00</option>
+                                <option value="4">辰时 07:00-09:00</option>
+                                <option value="5">巳时 09:00-11:00</option>
+                                <option value="6">午时 11:00-13:00</option>
+                                <option value="7">未时 13:00-15:00</option>
+                                <option value="8">申时 15:00-17:00</option>
+                                <option value="9">酉时 17:00-19:00</option>
+                                <option value="10">戌时 19:00-21:00</option>
+                                <option value="11">亥时 21:00-23:00</option>
+                            </select>
+                        </div>
+                        <!-- 出生城市/经度 -->
+                        <div>
+                            <label class="text-xs text-gray-500 mb-1 block">出生城市（自动计算真太阳时）</label>
+                            <input type="hidden" id="p2-lng" value="120">
+                            <select id="p2-city" class="input-field w-full px-4 py-3 rounded-xl text-sm" onchange="onCityChange('p2', this.value)">
+                                <option value="">-- 选择城市 --</option>
+                                <optgroup label="🇨🇳 华北东北">
+                                    <option value="116.40">北京</option>
+                                    <option value="117.20">天津</option>
+                                    <option value="114.48">石家庄</option>
+                                    <option value="112.55">太原</option>
+                                    <option value="111.65">呼和浩特</option>
+                                    <option value="123.43">沈阳</option>
+                                    <option value="125.32">长春</option>
+                                    <option value="126.63">哈尔滨</option>
+                                </optgroup>
+                                <optgroup label="🇨🇳 华东">
+                                    <option value="121.47" selected>上海</option>
+                                    <option value="120.19">杭州</option>
+                                    <option value="118.78">南京</option>
+                                    <option value="119.30">福州</option>
+                                    <option value="116.99">济南</option>
+                                    <option value="115.89">南昌</option>
+                                    <option value="117.28">合肥</option>
+                                </optgroup>
+                                <optgroup label="🇨🇳 华中华南">
+                                    <option value="114.30">武汉</option>
+                                    <option value="112.98">长沙</option>
+                                    <option value="113.65">郑州</option>
+                                    <option value="113.27">广州</option>
+                                    <option value="114.07">深圳</option>
+                                    <option value="108.33">南宁</option>
+                                    <option value="110.35">海口</option>
+                                </optgroup>
+                                <optgroup label="🇨🇳 西南西北">
+                                    <option value="104.07">成都</option>
+                                    <option value="106.55">重庆</option>
+                                    <option value="102.71">昆明</option>
+                                    <option value="106.71">贵阳</option>
+                                    <option value="91.11">拉萨</option>
+                                    <option value="108.95">西安</option>
+                                    <option value="87.62">乌鲁木齐</option>
+                                </optgroup>
+                                <optgroup label="🇭🇰🇹🇼">
+                                    <option value="114.17">香港</option>
+                                    <option value="113.55">澳门</option>
+                                    <option value="121.56">台北</option>
+                                </optgroup>
+                                <optgroup label="🌏 东亚">
+                                    <option value="139.69">东京</option>
+                                    <option value="135.50">大阪</option>
+                                    <option value="126.98">首尔</option>
+                                    <option value="103.82">新加坡</option>
+                                    <option value="100.52">曼谷</option>
+                                </optgroup>
+                                <optgroup label="🌍 欧洲">
+                                    <option value="0.13">伦敦</option>
+                                    <option value="2.35">巴黎</option>
+                                    <option value="13.41">柏林</option>
+                                    <option value="12.50">罗马</option>
+                                </optgroup>
+                                <optgroup label="🌎 美洲">
+                                    <option value="-74.01">纽约</option>
+                                    <option value="-118.24">洛杉矶</option>
+                                    <option value="-122.42">旧金山</option>
+                                    <option value="-79.38">多伦多</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- 对方确认按钮 -->
+                    <button onclick="confirmP2()" id="btn-confirm-p2" class="w-full mt-4 bg-secondary/10 text-secondary font-bold py-3 rounded-xl text-sm">
+                        确认录入 ✓
+                    </button>
+                </div>
+                
+                <!-- 提交匹配 -->
+                <button onclick="generateMatchReport()" class="linear-btn w-full text-white font-bold py-4 rounded-xl mb-6">生成综合匹配报告</button>
+                <div id="match-result" class="hidden">
+                    <div class="linear-card rounded-2xl p-6 text-center mb-5">
+                        <h3 class="text-lg font-bold text-dark mb-3" id="match-title"></h3>
+                        <div class="text-5xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2" id="match-score"></div>
+                        <div class="text-base" id="match-suggestion"></div>
+                        <canvas id="match-chart" height="220" class="mt-5"></canvas>
+                    </div>
+                    <div class="linear-card rounded-2xl p-5 mb-5">
+                        <h3 class="font-bold text-primary text-sm mb-4">八字匹配（40%）</h3>
+                        <div id="bazi-detail" class="text-gray-600 text-xs space-y-2"></div>
+                    </div>
+                    <div class="linear-card rounded-2xl p-5 mb-5">
+                        <h3 class="font-bold text-secondary text-sm mb-4">紫微匹配（35%）</h3>
+                        <div id="ziwei-detail" class="text-gray-600 text-xs space-y-2"></div>
+                    </div>
+                    <div class="linear-card rounded-2xl p-5 mb-5">
+                        <h3 class="font-bold text-accent text-sm mb-4">星盘匹配（25%）</h3>
+                        <div id="astrology-detail" class="text-gray-600 text-xs space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 多对象对比 -->
+        <div id="compare-tab" class="tab-content hidden fade-in">
+            <div class="w-full">
+                <h2 class="text-2xl font-bold text-center text-dark mb-6">多对象对比</h2>
+                <div class="linear-card rounded-2xl p-5 mb-5">
+                    <h3 class="font-bold text-primary text-sm mb-4">我的信息</h3>
+                    <div id="my-info-compare" class="text-gray-600 text-sm mb-4">
+                        <p class="text-gray-400">请先在"命格"页面生成并保存你的命格档案</p>
+                    </div>
+                    <button onclick="loadMyProfileForCompare()" class="linear-btn w-full text-white py-3 rounded-xl text-sm font-bold">加载我的命格</button>
+                </div>
+                <div class="linear-card rounded-2xl p-5 mb-5">
+                    <h3 class="font-bold text-primary text-sm mb-4">添加对比对象（最多5人）</h3>
+                    <div id="compare-list" class="space-y-3 mb-4">
+                        <p class="text-gray-400 text-sm">暂无对比对象</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="addCompareObject()" class="flex-1 linear-btn text-white py-3 rounded-xl text-sm font-bold">手动添加</button>
+                        <button onclick="importFromSaved()" class="flex-1 bg-white text-primary py-3 rounded-xl text-sm font-bold border-2 border-primary">从本地导入</button>
+                    </div>
+                </div>
+                <button id="generate-compare-btn" onclick="generateCompareReport()" class="linear-btn w-full text-white font-bold py-4 rounded-xl mb-6" disabled>生成对比报告</button>
+                <div id="compare-result" class="hidden">
+                    <div class="linear-card rounded-2xl p-5 mb-5">
+                        <h3 class="font-bold text-primary text-sm mb-4">综合排名</h3>
+                        <table class="compare-table">
+                            <thead>
+                                <tr><th>排名</th><th>姓名</th><th>综合</th><th>八字</th><th>紫微</th><th>星盘</th></tr>
+                            </thead>
+                            <tbody id="compare-table-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="linear-card rounded-2xl p-5 mb-5">
+                        <h3 class="font-bold text-primary text-sm mb-4">得分对比图</h3>
+                        <canvas id="compare-chart" height="250"></canvas>
+                    </div>
+                    <div class="linear-card rounded-2xl p-5">
+                        <h3 class="font-bold text-primary text-sm mb-4">推荐建议</h3>
+                        <div id="compare-suggestion" class="text-gray-600 text-sm"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据管理 -->
+        <div id="data-tab" class="tab-content hidden fade-in">
+            <div class="w-full">
+                <h2 class="text-2xl font-bold text-center text-dark mb-6">本地数据管理</h2>
+                <div class="linear-card rounded-2xl p-5 mb-5">
+                    <h3 class="font-bold text-primary text-sm mb-4">已保存命格</h3>
+                    <div id="saved-profiles" class="space-y-3 text-sm"></div>
+                </div>
+                <div class="linear-card rounded-2xl p-5">
+                    <div class="space-y-4">
+                        <button onclick="exportAllData()" class="w-full bg-gradient-to-r from-success to-success/80 text-white py-3 rounded-xl text-sm font-bold">导出所有数据</button>
+                        <input type="file" id="import-file" accept=".json" class="w-full text-sm text-gray-500">
+                        <button onclick="importAllData()" class="w-full bg-gradient-to-r from-warning to-warning/80 text-white py-3 rounded-xl text-sm font-bold">导入数据</button>
+                        <button onclick="clearAllData()" class="w-full bg-gradient-to-r from-danger to-danger/80 text-white py-3 rounded-xl text-sm font-bold">清除所有数据</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-gradient-to-r from-dark to-dark/80 text-white py-6 mt-8 text-center">
+        <p class="font-medium mb-1">婚查查 · 专业命理匹配</p>
+        <p class="text-white/60 text-xs">数据仅存本地 · 保护隐私安全</p>
+    </footer>
+
+    <!-- 添加对象模态框 -->
+    <div id="add-object-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="linear-card rounded-2xl p-6 w-full max-w-sm mx-4">
+            <h3 class="text-xl font-bold text-dark mb-5">添加对比对象</h3>
+            <div class="space-y-3">
+                <!-- 姓名 -->
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">姓名</label>
+                    <input type="text" id="obj-name" placeholder="请输入姓名" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                </div>
+                <!-- 性别 -->
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">性别</label>
+                    <select id="obj-gender" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                        <option value="2">女</option><option value="1">男</option>
+                    </select>
+                </div>
+                <!-- 出生日期 -->
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">出生日期</label>
+                    <input type="date" id="obj-birthdate" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                </div>
+                <!-- 出生时辰 -->
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">出生时辰</label>
+                    <select id="obj-birthtime" class="input-field w-full px-4 py-3 rounded-xl text-sm">
+                        <option value="0">子时 23:00-01:00</option>
+                        <option value="1">丑时 01:00-03:00</option>
+                        <option value="2">寅时 03:00-05:00</option>
+                        <option value="3">卯时 05:00-07:00</option>
+                        <option value="4">辰时 07:00-09:00</option>
+                        <option value="5">巳时 09:00-11:00</option>
+                        <option value="6">午时 11:00-13:00</option>
+                        <option value="7">未时 13:00-15:00</option>
+                        <option value="8">申时 15:00-17:00</option>
+                        <option value="9">酉时 17:00-19:00</option>
+                        <option value="10">戌时 19:00-21:00</option>
+                        <option value="11">亥时 21:00-23:00</option>
+                    </select>
+                </div>
+                <!-- 出生城市/经度 -->
+                <div>
+                    <label class="text-xs text-gray-500 mb-1 block">出生城市（自动计算真太阳时）</label>
+                    <input type="hidden" id="obj-lng" value="120">
+                    <select id="obj-city" class="input-field w-full px-4 py-3 rounded-xl text-sm" onchange="onCityChange('obj', this.value)">
+                        <option value="">-- 选择城市 --</option>
+                        <optgroup label="🇨🇳 华北东北">
+                            <option value="116.40">北京</option>
+                            <option value="117.20">天津</option>
+                            <option value="114.48">石家庄</option>
+                            <option value="112.55">太原</option>
+                            <option value="111.65">呼和浩特</option>
+                            <option value="123.43">沈阳</option>
+                            <option value="125.32">长春</option>
+                            <option value="126.63">哈尔滨</option>
+                        </optgroup>
+                        <optgroup label="🇨🇳 华东">
+                            <option value="121.47" selected>上海</option>
+                            <option value="120.19">杭州</option>
+                            <option value="118.78">南京</option>
+                            <option value="119.30">福州</option>
+                            <option value="116.99">济南</option>
+                            <option value="115.89">南昌</option>
+                            <option value="117.28">合肥</option>
+                        </optgroup>
+                        <optgroup label="🇨🇳 华中华南">
+                            <option value="114.30">武汉</option>
+                            <option value="112.98">长沙</option>
+                            <option value="113.65">郑州</option>
+                            <option value="113.27">广州</option>
+                            <option value="114.07">深圳</option>
+                            <option value="108.33">南宁</option>
+                            <option value="110.35">海口</option>
+                        </optgroup>
+                        <optgroup label="🇨🇳 西南西北">
+                            <option value="104.07">成都</option>
+                            <option value="106.55">重庆</option>
+                            <option value="102.71">昆明</option>
+                            <option value="106.71">贵阳</option>
+                            <option value="91.11">拉萨</option>
+                            <option value="108.95">西安</option>
+                            <option value="87.62">乌鲁木齐</option>
+                        </optgroup>
+                        <optgroup label="🇭🇰🇹🇼">
+                            <option value="114.17">香港</option>
+                            <option value="113.55">澳门</option>
+                            <option value="121.56">台北</option>
+                        </optgroup>
+                        <optgroup label="🌏 东亚">
+                            <option value="139.69">东京</option>
+                            <option value="135.50">大阪</option>
+                            <option value="126.98">首尔</option>
+                            <option value="103.82">新加坡</option>
+                            <option value="100.52">曼谷</option>
+                        </optgroup>
+                        <optgroup label="🌍 欧洲">
+                            <option value="0.13">伦敦</option>
+                            <option value="2.35">巴黎</option>
+                            <option value="13.41">柏林</option>
+                            <option value="12.50">罗马</option>
+                        </optgroup>
+                        <optgroup label="🌎 美洲">
+                            <option value="-74.01">纽约</option>
+                            <option value="-118.24">洛杉矶</option>
+                            <option value="-122.42">旧金山</option>
+                            <option value="-79.38">多伦多</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="closeAddObjectModal()" class="flex-1 bg-gray-200 text-gray-800 py-3 rounded-xl text-sm font-bold">取消</button>
+                <button onclick="confirmAddObject()" class="flex-1 linear-btn text-white py-3 rounded-xl text-sm font-bold">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入本地档案模态框 -->
+    <div id="import-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="linear-card rounded-2xl p-6 w-full max-w-sm mx-4">
+            <h3 class="text-xl font-bold text-dark mb-5">选择本地档案</h3>
+            <div id="import-list" class="space-y-3 max-h-80 overflow-y-auto mb-5"></div>
+            <button onclick="closeImportModal()" class="w-full bg-gray-200 text-gray-800 py-3 rounded-xl text-sm font-bold">取消</button>
+        </div>
+    </div>
+
+    <!-- ===== 自定义日期选择器弹出层 ===== -->
+    <div id="date-picker-overlay" class="date-picker-overlay hidden">
+        <div class="date-picker-panel">
+            <div class="dp-header">
+                <span class="dp-header-title">选择出生日期</span>
+                <button class="dp-close" id="dp-close-btn">×</button>
+            </div>
+            <div class="dp-body">
+                <div class="dp-quick-years" id="dp-quick-years"></div>
+                <div class="dp-year-row">
+                    <button class="dp-year-fast-btn" id="dp-fast-minus">«10</button>
+                    <button class="dp-year-btn" id="dp-year-minus">−</button>
+                    <div class="dp-year-display" id="dp-year-display">2000</div>
+                    <button class="dp-year-btn" id="dp-year-plus">+</button>
+                    <button class="dp-year-fast-btn" id="dp-fast-plus">10»</button>
+                </div>
+                <div class="dp-m-d-row">
+                    <div class="dp-select-wrap">
+                        <label class="dp-select-label">月份</label>
+                        <select id="dp-month-select" class="dp-native-select">
+                            <option value="1">01月</option><option value="2">02月</option><option value="3">03月</option>
+                            <option value="4">04月</option><option value="5">05月</option><option value="6">06月</option>
+                            <option value="7">07月</option><option value="8">08月</option><option value="9">09月</option>
+                            <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+                        </select>
+                    </div>
+                    <div class="dp-select-wrap">
+                        <label class="dp-select-label">日期</label>
+                        <select id="dp-day-select" class="dp-native-select">
+                            <option value="1">01日</option><option value="2">02日</option><option value="3">03日</option>
+                            <option value="4">04日</option><option value="5">05日</option><option value="6">06日</option>
+                            <option value="7">07日</option><option value="8">08日</option><option value="9">09日</option>
+                            <option value="10">10日</option><option value="11">11日</option><option value="12">12日</option>
+                            <option value="13">13日</option><option value="14">14日</option><option value="15">15日</option>
+                            <option value="16">16日</option><option value="17">17日</option><option value="18">18日</option>
+                            <option value="19">19日</option><option value="20">20日</option><option value="21">21日</option>
+                            <option value="22">22日</option><option value="23">23日</option><option value="24">24日</option>
+                            <option value="25">25日</option><option value="26">26日</option><option value="27">27日</option>
+                            <option value="28">28日</option><option value="29">29日</option><option value="30">30日</option>
+                            <option value="31">31日</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="dp-confirm-btn" id="dp-confirm-btn">确认日期</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+// ==================== 全局状态 ====================
+let currentProfile = null;
+let currentMatchReport = null;
+let nfcReader = null;
+let receivedNFCData = null;
+let myCompareProfile = null;
+let compareObjects = [];
+let compareChart = null;
+let matchChartInst = null;
+
+// ==================== 自定义日期选择器 ====================
+// 范围：1920 ~ 今年
+const DP_MIN_YEAR = 1920;
+const DP_MAX_YEAR = new Date().getFullYear();
+const DP_MONTHS = ['01月','02月','03月','04月','05月','06月','07月','08月','09月','10月','11月','12月'];
+let dpCurrentYear = 2000;
+let dpCurrentMonth = 1;
+let dpCurrentDay = 1;
+let dpTargetInputId = ''; // 当前绑定的input id
+
+function getDaysInMonth(year, month) {
+    return new Date(year, month, 0).getDate();
+}
+
+// 绑定日期选择器按钮事件（兼容 Android WebView）
+function bindDatePickerEvents() {
+    document.getElementById('dp-close-btn').addEventListener('click', closeDatePicker);
+    document.getElementById('dp-confirm-btn').addEventListener('click', dpConfirm);
+    document.getElementById('dp-year-minus').addEventListener('click', function() { dpChangeYear(-1); });
+    document.getElementById('dp-year-plus').addEventListener('click', function() { dpChangeYear(1); });
+    document.getElementById('dp-fast-minus').addEventListener('click', function() { dpFastYear(-10); });
+    document.getElementById('dp-fast-plus').addEventListener('click', function() { dpFastYear(10); });
+    document.getElementById('dp-month-select').addEventListener('change', dpUpdateDays);
+    document.getElementById('date-picker-overlay').addEventListener('click', function(e) {
+        if (e.target === this) closeDatePicker();
+    });
+}
+
+function openDatePicker(inputId) {
+    dpTargetInputId = inputId;
+    const input = document.getElementById(inputId);
+    // 解析已有值或默认今天
+    if(input && input.value) {
+        const parts = input.value.split('-');
+        if(parts.length === 3) {
+            dpCurrentYear  = parseInt(parts[0]);
+            dpCurrentMonth = parseInt(parts[1]);
+            dpCurrentDay   = parseInt(parts[2]);
+        }
+    } else {
+        const now = new Date();
+        dpCurrentYear  = 2000;
+        dpCurrentMonth = 1;
+        dpCurrentDay   = 1;
+    }
+    // 限制范围
+    dpCurrentYear = Math.max(DP_MIN_YEAR, Math.min(DP_MAX_YEAR, dpCurrentYear));
+
+    // 渲染快捷年份按钮（当前年前后各5年）
+    const quickEl = document.getElementById('dp-quick-years');
+    quickEl.innerHTML = '';
+    for(let y = dpCurrentYear - 5; y <= dpCurrentYear + 5; y++) {
+        if(y < DP_MIN_YEAR || y > DP_MAX_YEAR) continue;
+        const btn = document.createElement('button');
+        btn.className = 'dp-quick-y' + (y === dpCurrentYear ? ' selected' : '');
+        btn.textContent = y;
+        btn.addEventListener('click', (function(yy) {
+            return function() { dpSetYear(yy); };
+        })(y));
+        quickEl.appendChild(btn);
+    }
+
+    document.getElementById('dp-year-display').textContent = dpCurrentYear;
+    document.getElementById('dp-year-minus').disabled = dpCurrentYear <= DP_MIN_YEAR;
+    document.getElementById('dp-year-plus').disabled  = dpCurrentYear >= DP_MAX_YEAR;
+
+    // 填充月份 - 直接设置选中项（预填充选项已在HTML中）
+    const monthSel = document.getElementById('dp-month-select');
+    for (let i = 0; i < monthSel.options.length; i++) {
+        monthSel.options[i].selected = (i + 1 === dpCurrentMonth);
+    }
+
+    dpUpdateDays();
+
+    document.getElementById('date-picker-overlay').classList.remove('hidden');
+}
+
+function dpSetYear(y) {
+    dpCurrentYear = y;
+    document.getElementById('dp-year-display').textContent = y;
+    document.getElementById('dp-year-minus').disabled = y <= DP_MIN_YEAR;
+    document.getElementById('dp-year-plus').disabled  = y >= DP_MAX_YEAR;
+    dpUpdateDays();
+    // 刷新快捷按钮高亮
+    const quickEl = document.getElementById('dp-quick-years');
+    quickEl.querySelectorAll('.dp-quick-y').forEach(btn => {
+        btn.classList.toggle('selected', parseInt(btn.textContent) === y);
+    });
+}
+
+function dpChangeYear(delta) {
+    const newYear = dpCurrentYear + delta;
+    if(newYear < DP_MIN_YEAR || newYear > DP_MAX_YEAR) return;
+    dpSetYear(newYear);
+}
+
+function dpFastYear(delta) {
+    const newYear = dpCurrentYear + delta;
+    if(newYear < DP_MIN_YEAR || newYear > DP_MAX_YEAR) return;
+    dpSetYear(newYear);
+}
+
+function dpUpdateDays() {
+    const month = parseInt(document.getElementById('dp-month-select').value);
+    const days = getDaysInMonth(dpCurrentYear, month);
+    const daySel = document.getElementById('dp-day-select');
+    // 设置日期选项：启用/禁用并选中
+    for (let d = 1; d <= 31; d++) {
+        const opt = daySel.options[d - 1];
+        if (opt) {
+            opt.disabled = (d > days);
+            opt.style.display = (d > days) ? 'none' : '';
+            if (d === dpCurrentDay && d <= days) {
+                opt.selected = true;
+            }
+        }
+    }
+    // 修正当前日若超范围
+    if (dpCurrentDay > days) {
+        dpCurrentDay = days;
+        daySel.value = dpCurrentDay;
+    }
+}
+
+function dpConfirm() {
+    const year  = dpCurrentYear;
+    const month = parseInt(document.getElementById('dp-month-select').value);
+    const day   = parseInt(document.getElementById('dp-day-select').value);
+    const value = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const input = document.getElementById(dpTargetInputId);
+    if(input) {
+        input.value = value;
+        // 触发原生change事件，便于后续逻辑监听
+        input.dispatchEvent(new Event('change', {bubbles: true}));
+    }
+    closeDatePicker();
+}
+
+function closeDatePicker() {
+    document.getElementById('date-picker-overlay').classList.add('hidden');
+}
+
+// 将所有 type="date" 的 input 替换为自定义触发器
+function initDatePickers() {
+    document.querySelectorAll('input[type="date"]').forEach(input => {
+        const id = input.id;
+        // 隐藏原生input
+        input.style.display = 'none';
+        // 在其前插入自定义触发按钮
+        const trigger = document.createElement('div');
+        trigger.className = 'date-picker-trigger';
+        trigger.id = 'dp-trigger-' + id;
+        trigger.dataset.inputId = id;
+        trigger.addEventListener('click', function() {
+            openDatePicker(id);
+        });
+        // 同步已有值
+        const updateDisplay = () => {
+            if(input.value) {
+                const [y,m,d] = input.value.split('-');
+                trigger.innerHTML = `<span style="color:#1e1b4b;font-weight:500">${y}年${m}月${d}日</span><span style="color:#a78bfa;font-size:16px;">▼</span>`;
+            } else {
+                trigger.innerHTML = `<span class="date-picker-placeholder">请选择日期</span><span style="color:#a78bfa;font-size:16px;">▼</span>`;
+            }
+        };
+        updateDisplay();
+        input.addEventListener('change', updateDisplay);
+        input.parentNode.insertBefore(trigger, input);
+    });
+}
+
+// ==================== 命理基础数据 ====================
+const tianGan = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const diZhi   = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const wuXingGan = ['木','木','火','火','土','土','金','金','水','水']; // 天干五行
+const wuXingZhi = ['水','土','木','木','土','火','火','土','金','金','土','水']; // 地支五行
+
+// 地支藏干（本气权重/中气/余气）
+const zhiCangGan = {
+    '子':[['癸',10]],
+    '丑':[['己',7],['辛',2],['癸',1]],
+    '寅':[['甲',7],['丙',2],['戊',1]],
+    '卯':[['乙',10]],
+    '辰':[['戊',7],['乙',2],['癸',1]],
+    '巳':[['丙',7],['庚',2],['戊',1]],
+    '午':[['丁',7],['己',3]],
+    '未':[['己',7],['丁',2],['乙',1]],
+    '申':[['庚',7],['壬',2],['戊',1]],
+    '酉':[['辛',10]],
+    '戌':[['戊',7],['辛',2],['丁',1]],
+    '亥':[['壬',7],['甲',3]]
+};
+
+// 天干五行相生相克
+const wuXingSheng = {木:'火',火:'土',土:'金',金:'水',水:'木'};
+const wuXingKe   = {木:'土',火:'金',土:'水',金:'木',水:'火'};
+
+// 节气表（月份对应节令所在日，近似值用于换月计算）
+const jieqiDay = [6,4,6,5,6,6,7,8,8,8,7,7]; // 1月小寒,2月立春,...
+
+// 紫微斗数12宫
+const ziweiPalaces = ['命宫','兄弟','夫妻','子女','财帛','疾厄','迁移','交友','事业','田宅','福德','父母'];
+
+// 14主星与宫位性格
+const starType = {
+    '紫微':'帝王型','天府':'守成型','武曲':'刚毅型','天相':'辅佐型',
+    '太阳':'热情型','巨门':'辩才型','天机':'智慧型','太阴':'温柔型',
+    '贪狼':'多才型','破军':'开创型','廉贞':'艺术型','七杀':'独立型',
+    '天同':'乐天型','天梁':'长辈型'
+};
+
+// ==================== 紫微斗数四化星表 ====================
+// 天干序号：0甲 1乙 2丙 3丁 4戊 5己 6庚 7辛 8壬 9癸
+// 四化星表（年干 → [化禄, 化权, 化科, 化忌]）
+const sihuaTable = {
+    0: {lu:'贪狼', quan:'禄存', ke:'左辅', ji:'文曲'},  // 甲年
+    1: {lu:'天机', quan:'紫微', ke:'天梁', ji:'太阴'},  // 乙年
+    2: {lu:'天同', quan:'太阳', ke:'天机', ji:'文昌'},  // 丙年
+    3: {lu:'天机', quan:'天同', ke:'太阴', ji:'廉贞'},  // 丁年
+    4: {lu:'太阴', quan:'贪狼', ke:'天机', ji:'文曲'},  // 戊年
+    5: {lu:'武曲', quan:'天同', ke:'文昌', ji:'天机'},  // 己年
+    6: {lu:'太阳', quan:'武曲', ke:'天梁', ji:'文曲'},  // 庚年
+    7: {lu:'巨门', quan:'太阳', ke:'天机', ji:'文昌'},  // 辛年
+    8: {lu:'天机', quan:'天梁', ke:'紫微', ji:'贪狼'},  // 壬年
+    9: {lu:'天同', quan:'太阴', ke:'天机', ji:'太阴'}   // 癸年
+};
+
+// 四化星在各宫的落点表（以命宫为0，顺时针数）
+// 化禄、化权、化科、化忌分别对应不同宫位
+const sihuaPosTable = {
+    // 化禄落宫（年支→宫位，0=子...11=亥）
+    luPos: {0:1, 1:4, 2:7, 3:10, 4:1, 5:4, 6:7, 7:10, 8:1, 9:4, 10:7, 11:10},
+    // 化权落宫
+    quanPos: {0:2, 1:5, 2:8, 3:11, 4:2, 5:5, 6:8, 7:11, 8:2, 9:5, 10:8, 11:11},
+    // 化科落宫
+    kePos: {0:3, 1:6, 2:9, 3:0, 4:3, 5:6, 6:9, 7:0, 8:3, 9:6, 10:9, 11:0},
+    // 化忌落宫
+    jiPos: {0:4, 1:7, 2:10, 3:1, 4:4, 5:7, 6:10, 7:1, 8:4, 9:7, 10:10, 11:1}
+};
+
+// 西洋星座
+const astrologySigns    = ['白羊','金牛','双子','巨蟹','狮子','处女','天秤','天蝎','射手','摩羯','水瓶','双鱼'];
+const astrologyElements = ['火','土','风','水','火','土','风','水','火','土','风','水'];
+const astrologyModes    = ['主动','稳定','变动','主动','稳定','变动','主动','稳定','变动','主动','稳定','变动'];
+const planetColors      = ['#f59e0b','#6b7280','#8b5cf6','#ec4899','#ef4444'];
+
+// 星座日期边界（月份,日期 为起始日）
+const signBounds = [
+    [3,21],[4,20],[5,21],[6,21],[7,23],[8,23],
+    [9,23],[10,23],[11,22],[12,22],[1,20],[2,19]
+];
+
+// ==================== 全球城市数据库 ====================
+// 格式：{name: 城市名, lng: 经度, region: 地区, country: 国家}
+const CITY_DATABASE = [
+    // 中国大陆（按经度排序）
+    {name:'哈尔滨', lng:126.63, region:'东北', country:'中国'},
+    {name:'长春', lng:125.32, region:'东北', country:'中国'},
+    {name:'沈阳', lng:123.43, region:'东北', country:'中国'},
+    {name:'大连', lng:121.62, region:'东北', country:'中国'},
+    {name:'北京', lng:116.40, region:'华北', country:'中国'},
+    {name:'天津', lng:117.20, region:'华北', country:'中国'},
+    {name:'石家庄', lng:114.48, region:'华北', country:'中国'},
+    {name:'济南', lng:116.99, region:'华东', country:'中国'},
+    {name:'青岛', lng:120.38, region:'华东', country:'中国'},
+    {name:'太原', lng:112.55, region:'华北', country:'中国'},
+    {name:'呼和浩特', lng:111.65, region:'华北', country:'中国'},
+    {name:'郑州', lng:113.65, region:'华中', country:'中国'},
+    {name:'武汉', lng:114.30, region:'华中', country:'中国'},
+    {name:'西安', lng:108.95, region:'西北', country:'中国'},
+    {name:'上海', lng:121.47, region:'华东', country:'中国'},
+    {name:'南京', lng:118.78, region:'华东', country:'中国'},
+    {name:'合肥', lng:117.28, region:'华东', country:'中国'},
+    {name:'杭州', lng:120.19, region:'华东', country:'中国'},
+    {name:'苏州', lng:120.62, region:'华东', country:'中国'},
+    {name:'宁波', lng:121.55, region:'华东', country:'中国'},
+    {name:'长沙', lng:112.98, region:'华中', country:'中国'},
+    {name:'南昌', lng:115.89, region:'华东', country:'中国'},
+    {name:'成都', lng:104.07, region:'西南', country:'中国'},
+    {name:'重庆', lng:106.55, region:'西南', country:'中国'},
+    {name:'昆明', lng:102.71, region:'西南', country:'中国'},
+    {name:'贵阳', lng:106.71, region:'西南', country:'中国'},
+    {name:'福州', lng:119.30, region:'华东', country:'中国'},
+    {name:'厦门', lng:118.09, region:'华东', country:'中国'},
+    {name:'广州', lng:113.27, region:'华南', country:'中国'},
+    {name:'深圳', lng:114.07, region:'华南', country:'中国'},
+    {name:'南宁', lng:108.33, region:'华南', country:'中国'},
+    {name:'海口', lng:110.35, region:'华南', country:'中国'},
+    {name:'拉萨', lng:91.11, region:'西南', country:'中国'},
+    {name:'兰州', lng:103.82, region:'西北', country:'中国'},
+    {name:'西宁', lng:101.78, region:'西北', country:'中国'},
+    {name:'银川', lng:106.27, region:'西北', country:'中国'},
+    {name:'乌鲁木齐', lng:87.62, region:'西北', country:'中国'},
+    {name:'喀什', lng:75.99, region:'西北', country:'中国'},
+    // 港澳台
+    {name:'香港', lng:114.17, region:'港澳台', country:'中国'},
+    {name:'澳门', lng:113.55, region:'港澳台', country:'中国'},
+    {name:'台北', lng:121.56, region:'港澳台', country:'中国'},
+    // 东亚
+    {name:'东京', lng:139.69, region:'东亚', country:'日本'},
+    {name:'大阪', lng:135.50, region:'东亚', country:'日本'},
+    {name:'首尔', lng:126.98, region:'东亚', country:'韩国'},
+    {name:'釜山', lng:129.04, region:'东亚', country:'韩国'},
+    {name:'平壤', lng:125.76, region:'东亚', country:'朝鲜'},
+    {name:'乌兰巴托', lng:106.91, region:'东亚', country:'蒙古'},
+    {name:'曼谷', lng:100.52, region:'东南亚', country:'泰国'},
+    {name:'清迈', lng:98.98, region:'东南亚', country:'泰国'},
+    {name:'新加坡', lng:103.82, region:'东南亚', country:'新加坡'},
+    {name:'吉隆坡', lng:101.69, region:'东南亚', country:'马来西亚'},
+    {name:'雅加达', lng:106.85, region:'东南亚', country:'印尼'},
+    {name:'巴厘岛', lng:115.22, region:'东南亚', country:'印尼'},
+    {name:'马尼拉', lng:120.98, region:'东南亚', country:'菲律宾'},
+    {name:'胡志明市', lng:106.66, region:'东南亚', country:'越南'},
+    {name:'河内', lng:105.84, region:'东南亚', country:'越南'},
+    {name:'金边', lng:104.92, region:'东南亚', country:'柬埔寨'},
+    {name:'万象', lng:102.63, region:'东南亚', country:'老挝'},
+    // 南亚
+    {name:'新德里', lng:77.21, region:'南亚', country:'印度'},
+    {name:'孟买', lng:72.88, region:'南亚', country:'印度'},
+    {name:'加尔各答', lng:88.36, region:'南亚', country:'印度'},
+    {name:'班加罗尔', lng:77.59, region:'南亚', country:'印度'},
+    {name:'钦奈', lng:80.27, region:'南亚', country:'印度'},
+    {name:'加德满都', lng:85.31, region:'南亚', country:'尼泊尔'},
+    {name:'科伦坡', lng:79.86, region:'南亚', country:'斯里兰卡'},
+    {name:'达卡', lng:90.41, region:'南亚', country:'孟加拉'},
+    {name:'伊斯兰堡', lng:73.05, region:'南亚', country:'巴基斯坦'},
+    {name:'卡拉奇', lng:67.01, region:'南亚', country:'巴基斯坦'},
+    // 中东
+    {name:'迪拜', lng:55.30, region:'中东', country:'阿联酋'},
+    {name:'阿布扎比', lng:54.38, region:'中东', country:'阿联酋'},
+    {name:'多哈', lng:51.53, region:'中东', country:'卡塔尔'},
+    {name:'利雅得', lng:46.72, region:'中东', country:'沙特'},
+    {name:'吉达', lng:39.18, region:'中东', country:'沙特'},
+    {name:'特拉维夫', lng:34.79, region:'中东', country:'以色列'},
+    {name:'耶路撒冷', lng:35.21, region:'中东', country:'以色列'},
+    {name:'贝鲁特', lng:35.51, region:'中东', country:'黎巴嫩'},
+    {name:'安曼', lng:35.91, region:'中东', country:'约旦'},
+    {name:'巴格达', lng:44.37, region:'中东', country:'伊拉克'},
+    {name:'德黑兰', lng:51.42, region:'中东', country:'伊朗'},
+    {name:'伊斯坦布尔', lng:28.98, region:'中东', country:'土耳其'},
+    {name:'安卡拉', lng:32.86, region:'中东', country:'土耳其'},
+    // 欧洲
+    {name:'伦敦', lng:0.13, region:'欧洲', country:'英国'},
+    {name:'曼彻斯特', lng:-2.24, region:'欧洲', country:'英国'},
+    {name:'巴黎', lng:2.35, region:'欧洲', country:'法国'},
+    {name:'马赛', lng:5.37, region:'欧洲', country:'法国'},
+    {name:'柏林', lng:13.41, region:'欧洲', country:'德国'},
+    {name:'法兰克福', lng:8.68, region:'欧洲', country:'德国'},
+    {name:'慕尼黑', lng:11.58, region:'欧洲', country:'德国'},
+    {name:'汉堡', lng:10.00, region:'欧洲', country:'德国'},
+    {name:'罗马', lng:12.50, region:'欧洲', country:'意大利'},
+    {name:'米兰', lng:9.19, region:'欧洲', country:'意大利'},
+    {name:'威尼斯', lng:12.33, region:'欧洲', country:'意大利'},
+    {name:'马德里', lng:-3.70, region:'欧洲', country:'西班牙'},
+    {name:'巴塞罗那', lng:2.15, region:'欧洲', country:'西班牙'},
+    {name:'里斯本', lng:-9.14, region:'欧洲', country:'葡萄牙'},
+    {name:'阿姆斯特丹', lng:4.90, region:'欧洲', country:'荷兰'},
+    {name:'布鲁塞尔', lng:4.35, region:'欧洲', country:'比利时'},
+    {name:'维也纳', lng:16.37, region:'欧洲', country:'奥地利'},
+    {name:'苏黎世', lng:8.54, region:'欧洲', country:'瑞士'},
+    {name:'日内瓦', lng:6.14, region:'欧洲', country:'瑞士'},
+    {name:'雅典', lng:23.73, region:'欧洲', country:'希腊'},
+    {name:'布拉格', lng:14.44, region:'欧洲', country:'捷克'},
+    {name:'华沙', lng:21.01, region:'欧洲', country:'波兰'},
+    {name:'布达佩斯', lng:19.04, region:'欧洲', country:'匈牙利'},
+    {name:'莫斯科', lng:37.62, region:'欧洲', country:'俄罗斯'},
+    {name:'圣彼得堡', lng:30.31, region:'欧洲', country:'俄罗斯'},
+    {name:'伊尔库茨克', lng:104.29, region:'欧洲', country:'俄罗斯'},
+    {name:'赫尔辛基', lng:24.94, region:'欧洲', country:'芬兰'},
+    {name:'斯德哥尔摩', lng:18.07, region:'欧洲', country:'瑞典'},
+    {name:'奥斯陆', lng:10.75, region:'欧洲', country:'挪威'},
+    {name:'哥本哈根', lng:12.57, region:'欧洲', country:'丹麦'},
+    {name:'都柏林', lng:-6.26, region:'欧洲', country:'爱尔兰'},
+    {name:'雷克雅未克', lng:-21.90, region:'欧洲', country:'冰岛'},
+    // 北美
+    {name:'纽约', lng:-74.01, region:'北美', country:'美国'},
+    {name:'洛杉矶', lng:-118.24, region:'北美', country:'美国'},
+    {name:'旧金山', lng:-122.42, region:'北美', country:'美国'},
+    {name:'芝加哥', lng:-87.63, region:'北美', country:'美国'},
+    {name:'休斯顿', lng:-95.37, region:'北美', country:'美国'},
+    {name:'迈阿密', lng:-80.19, region:'北美', country:'美国'},
+    {name:'西雅图', lng:-122.33, region:'北美', country:'美国'},
+    {name:'波士顿', lng:-71.06, region:'北美', country:'美国'},
+    {name:'华盛顿', lng:-77.04, region:'北美', country:'美国'},
+    {name:'拉斯维加斯', lng:-115.14, region:'北美', country:'美国'},
+    {name:'夏威夷', lng:-157.86, region:'北美', country:'美国'},
+    {name:'多伦多', lng:-79.38, region:'北美', country:'加拿大'},
+    {name:'温哥华', lng:-123.12, region:'北美', country:'加拿大'},
+    {name:'蒙特利尔', lng:-73.57, region:'北美', country:'加拿大'},
+    {name:'墨西哥城', lng:-99.13, region:'北美', country:'墨西哥'},
+    // 南美
+    {name:'圣保罗', lng:-46.63, region:'南美', country:'巴西'},
+    {name:'里约热内卢', lng:-43.17, region:'南美', country:'巴西'},
+    {name:'布宜诺斯艾利斯', lng:-58.38, region:'南美', country:'阿根廷'},
+    {name:'利马', lng:-77.04, region:'南美', country:'秘鲁'},
+    {name:'圣地亚哥', lng:-70.67, region:'南美', country:'智利'},
+    {name:'波哥大', lng:-74.08, region:'南美', country:'哥伦比亚'},
+    {name:'加拉加斯', lng:-66.90, region:'南美', country:'委内瑞拉'},
+    {name:'蒙得维的亚', lng:-56.17, region:'南美', country:'乌拉圭'},
+    // 大洋洲
+    {name:'悉尼', lng:151.21, region:'大洋洲', country:'澳大利亚'},
+    {name:'墨尔本', lng:144.96, region:'大洋洲', country:'澳大利亚'},
+    {name:'布里斯班', lng:153.03, region:'大洋洲', country:'澳大利亚'},
+    {name:'珀斯', lng:115.86, region:'大洋洲', country:'澳大利亚'},
+    {name:'奥克兰', lng:174.77, region:'大洋洲', country:'新西兰'},
+    {name:'惠灵顿', lng:174.78, region:'大洋洲', country:'新西兰'},
+    {name:'苏瓦', lng:178.45, region:'大洋洲', country:'斐济'},
+    // 非洲
+    {name:'开罗', lng:31.24, region:'非洲', country:'埃及'},
+    {name:'亚历山大', lng:29.92, region:'非洲', country:'埃及'},
+    {name:'约翰内斯堡', lng:28.05, region:'非洲', country:'南非'},
+    {name:'开普敦', lng:18.42, region:'非洲', country:'南非'},
+    {name:'德班', lng:31.02, region:'非洲', country:'南非'},
+    {name:'内罗毕', lng:36.82, region:'非洲', country:'肯尼亚'},
+    {name:'拉各斯', lng:3.38, region:'非洲', country:'尼日利亚'},
+    {name:'卡萨布兰卡', lng:-7.61, region:'非洲', country:'摩洛哥'},
+    {name:'突尼斯', lng:10.18, region:'非洲', country:'突尼斯'},
+    {name:'阿尔及尔', lng:3.05, region:'非洲', country:'阿尔及利亚'},
+    {name:'达累斯萨拉姆', lng:39.27, region:'非洲', country:'坦桑尼亚'},
+    {name:'亚的斯亚贝巴', lng:38.75, region:'非洲', country:'埃塞俄比亚'},
+    {name:'达喀尔', lng:-17.44, region:'非洲', country:'塞内加尔'},
+    {name:'阿克拉', lng:-0.19, region:'非洲', country:'加纳'},
+    {name:'卢萨卡', lng:28.32, region:'非洲', country:'赞比亚'},
+];
+
+// 根据经度获取城市名
+function getCityName(lng) {
+    // 精确匹配
+    const exact = CITY_DATABASE.find(c => c.lng === lng);
+    if(exact) return exact.name + ' (' + lng + '°)';
+    // 近似匹配（取最接近的）
+    let closest = CITY_DATABASE[0];
+    let minDiff = Math.abs(CITY_DATABASE[0].lng - lng);
+    CITY_DATABASE.forEach(c => {
+        const diff = Math.abs(c.lng - lng);
+        if(diff < minDiff) { minDiff = diff; closest = c; }
+    });
+    return closest.name + ' (' + lng + '°)';
+}
+
+// 生成城市选择器HTML（带搜索功能的下拉列表）
+function createCitySelector(id, selectedLng) {
+    const selectedCity = CITY_DATABASE.find(c => Math.abs(c.lng - selectedLng) < 0.5);
+    const selectedName = selectedCity ? selectedCity.name : '';
+    let html = `<div class="relative">
+        <input type="text" id="${id}-search" value="${selectedName}" placeholder="搜索城市..." 
+               class="input-field w-full px-4 py-3 rounded-xl text-sm" 
+               oninput="filterCityOptions('${id}', this.value)">
+        <select id="${id}" class="hidden" onchange="onCitySelected('${id}')">
+            <option value="">-- 选择城市 --</option>`;
+    CITY_DATABASE.forEach(c => {
+        const sel = Math.abs(c.lng - selectedLng) < 0.5 ? 'selected' : '';
+        html += `<option value="${c.lng}" data-name="${c.name}" data-region="${c.region}" data-country="${c.country}" ${sel}>
+            ${c.name} (${c.country}) ${c.lng > 0 ? 'E' : 'W'}${Math.abs(c.lng)}°
+        </option>`;
+    });
+    html += `</select>
+        <div id="${id}-dropdown" class="city-dropdown absolute z-50 w-full mt-1 bg-white rounded-xl shadow-lg max-h-60 overflow-y-auto hidden border border-gray-200">
+            ${generateCityDropdownHtml('')}
+        </div>
+    </div>`;
+    return html;
+}
+
+// 生成城市下拉HTML（支持过滤）
+function generateCityDropdownHtml(filter) {
+    let html = '';
+    const regions = ['华北','东北','华东','华中','华南','西南','西北','港澳台','东亚','东南亚','南亚','中东','欧洲','北美','南美','大洋洲','非洲'];
+    regions.forEach(region => {
+        const cities = CITY_DATABASE.filter(c => c.region === region && 
+            (!filter || c.name.includes(filter) || c.country.includes(filter) || c.region.includes(filter)));
+        if(cities.length > 0) {
+            html += `<div class="px-3 py-1 text-xs text-gray-400 bg-gray-50 sticky top-0">${region}</div>`;
+            cities.forEach(c => {
+                html += `<div class="px-3 py-2 cursor-pointer hover:bg-purple-50 text-sm" 
+                    onclick="selectCity('${c.lng}', '${c.name}')">${c.name} (${c.country})</div>`;
+            });
+        }
+    });
+    return html;
+}
+
+// 过滤城市选项
+function filterCityOptions(id, filter) {
+    const dropdown = document.getElementById(id + '-dropdown');
+    if(dropdown) {
+        dropdown.innerHTML = generateCityDropdownHtml(filter);
+        dropdown.classList.remove('hidden');
+    }
+}
+
+// 选中城市
+function selectCity(lng, name) {
+    // 更新搜索框
+    const inputs = document.querySelectorAll('input[placeholder="搜索城市..."]');
+    inputs.forEach(inp => {
+        if(inp.value === name || !inp.value) {
+            inp.value = name;
+        }
+    });
+    // 隐藏下拉
+    const dropdowns = document.querySelectorAll('.city-dropdown');
+    dropdowns.forEach(d => d.classList.add('hidden'));
+}
+
+// 城市选择变化时更新经度
+function onCitySelected(id) {
+    const sel = document.getElementById(id);
+    const search = document.getElementById(id + '-search');
+    if(sel && search) {
+        const opt = sel.options[sel.selectedIndex];
+        search.value = opt.dataset.name || sel.value;
+    }
+}
+
+// ==================== 工具函数 ====================
+function getSunSign(month, day) {
+    for(let i = 0; i < 12; i++) {
+        const [sm, sd] = signBounds[i];
+        const [em, ed] = signBounds[(i+1)%12];
+        if(month === sm && day >= sd) return i;
+        if(month === em && day < ed) return i;
+    }
+    return 0;
+}
+
+// ==================== 真太阳时计算 ====================
+// 计算一年中的第几天
+function dayOfYear(year, month, day) {
+    const days = [0,31,59,90,120,151,181,212,243,273,304,334];
+    const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+    let n = days[month - 1] + day;
+    if(isLeap && month > 2) n++;
+    return n;
+}
+
+// 计算均时差（Equation of Time）- 分钟
+// 真太阳时与平太阳时之差，受地球椭圆轨道和自转轴倾斜影响
+function equationOfTime(year, month, day) {
+    const N = dayOfYear(year, month, day);
+    // 近似公式
+    const B = 360 * (N - 81) / 365;
+    const B_rad = B * Math.PI / 180;
+    // 均时差公式（Spencer公式简化）
+    const E = 9.87 * Math.sin(2 * B_rad) - 7.53 * Math.cos(B_rad) - 1.5 * Math.sin(B_rad);
+    return E;
+}
+
+// 计算真太阳时
+// 参数：北京时间(hour: 0-23, minute: 0-59), 经度(标准经度120度)
+function trueSolarTime(hour, minute, longitude) {
+    // 北京时间转为UTC+8的分钟数
+    const beijingMinutes = hour * 60 + minute;
+    // 经度时差：每度4分钟，东经偏东（经度>120）加时间
+    const longitudeDiff = longitude - 120; // 经度差
+    const longitudeCorrection = longitudeDiff * 4; // 分钟
+    // 均时差（转换为分钟）
+    // 获取当前日期用于计算均时差（这里用简化版）
+    const now = new Date();
+    const E = equationOfTime(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    // 真太阳时 = 北京时间 + 经度时差 + 均时差
+    const trueMinutes = beijingMinutes + longitudeCorrection + E;
+    return trueMinutes;
+}
+
+// 将真太阳时分钟数转为时辰索引(0-11)
+// 真太阳时23:00-01:00对应子时(0)，01:00-03:00对应丑时(1)，以此类推
+function solarToHourIndex(trueSolarMinutes) {
+    // 将分钟数归一化到0-1440范围
+    let mins = ((trueSolarMinutes % 1440) + 1440) % 1440;
+    // 北京时间23:00-01:00为子时（对应分钟1380-1440和0-60）
+    // 北京时间01:00-03:00为丑时（对应分钟60-180）
+    // ...
+    // 北京时间11:00-13:00为午时（对应分钟660-780）
+    let hourIndex;
+    if(mins >= 1380 || mins < 60) { // 23:00-01:00为子时
+        hourIndex = 0; // 子时
+    } else {
+        hourIndex = Math.floor((mins + 60) / 120) % 12;
+    }
+    return hourIndex;
+}
+
+// ==================== 节气精确计算 ====================
+// 节气日期表（公历日期，精确到日）
+// 从小寒开始，每个月有两个节气
+const JIEQI_DATES = {
+    // 格式：月份: [上半月节气日期, 下半月节气日期]
+    1:  [5, 20],   // 小寒, 大寒
+    2:  [4, 19],   // 立春, 雨水
+    3:  [5, 20],   // 惊蛰, 春分
+    4:  [4, 20],   // 清明, 谷雨
+    5:  [5, 21],   // 立夏, 小满
+    6:  [5, 21],   // 芒种, 夏至
+    7:  [7, 22],   // 小暑, 大暑
+    8:  [7, 23],   // 立秋, 处暑
+    9:  [7, 23],   // 白露, 秋分
+    10: [8, 23],   // 寒露, 霜降
+    11: [7, 22],   // 立冬, 小雪
+    12: [7, 22]     // 大雪, 冬至
+};
+
+// 节气名称（按顺序）
+const JIEQI_NAMES = [
+    '小寒','大寒','立春','雨水','惊蛰','春分',
+    '清明','谷雨','立夏','小满','芒种','夏至',
+    '小暑','大暑','立秋','处暑','白露','秋分',
+    '寒露','霜降','立冬','小雪','大雪','冬至'
+];
+
+// 获取当前节气
+function getCurrentJieqi(month, day) {
+    const dates = JIEQI_DATES[month];
+    if(!dates) return {jieqi: '未知', yueLing: 2}; // 默认立春月
+    
+    let jieqiIndex;
+    if(day < dates[0]) {
+        // 在当月第一个节气之前，属于上个月的第二个节气
+        jieqiIndex = ((month - 2 + 12) % 12) * 2 + 1;
+    } else if(day < dates[1]) {
+        // 在当月两个节气之间，使用当月第一个节气
+        jieqiIndex = (month - 1) * 2;
+    } else {
+        // 在当月第二个节气之后，使用当月第二个节气
+        jieqiIndex = (month - 1) * 2 + 1;
+    }
+    
+    const jieqi = JIEQI_NAMES[(jieqiIndex + 24) % 24];
+    
+    // 月令计算：节气从立春(索引2)开始，每两个节气为一个月份
+    // 索引0-1（小寒大寒）：丑月(1)，索引2-3（立春雨水）：寅月(2)...
+    let monthOffset = Math.floor((jieqiIndex - 2) / 2);
+    if(monthOffset < 0) monthOffset += 12;
+    // 月令地支：寅月=2, 卯月=3, 辰月=4, ..., 丑月=1
+    const yueLing = (monthOffset + 2) % 12;
+    
+    return {jieqi, yueLing};
+}
+
+// ==================== 专业八字排盘（精确版）====================
+function calculateBazi(year, month, day, hour, longitude = 120) {
+    // ---- 真太阳时计算 ----
+    // 时辰转换：hour=0子时(23:00-01:00), hour=6午时(11:00-13:00)...
+    // 公式：(23 + hour * 2) % 24 得到小时的起始时间
+    // 取时辰中间点 +30分钟
+    const baseHour = (23 + hour * 2) % 24; // 时辰起始小时
+    const beijingHour = baseHour; // 北京时间小时
+    const trueMinutes = trueSolarTime(beijingHour, 30, longitude); // 估算真太阳时（取时辰中间）
+    const trueHourIndex = solarToHourIndex(trueMinutes);
+    
+    // ---- 年柱（立春换年）----
+    // 立春一般在2月4日左右，立春前属上一年
+    const springStarts = JIEQI_DATES[2][0]; // 立春日期(约2月4日)
+    let baseYear = year;
+    if(month < 2 || (month === 2 && day < springStarts)) {
+        baseYear = year - 1;
+    }
+    let yearGan  = ((baseYear - 4) % 10 + 10) % 10;
+    let yearZhi  = ((baseYear - 4) % 12 + 12) % 12;
+
+    // ---- 月柱（节令换月）----
+    // 获取精确节气判断月令
+    const {jieqi, yueLing} = getCurrentJieqi(month, day);
+    
+    // 月干由年干推算（五虎遁月口诀）
+    // 甲己年：寅月起丙(2)，乙庚年：戊(4)，丙辛年：庚(6)，丁壬年：壬(8)，戊癸年：甲(0)
+    const monthGanBase = [2, 4, 6, 8, 0];
+    const yearGroup = yearGan % 5;
+    // 寅月地支索引为2
+    const monthZhi = yueLing;
+    const monthGan = (monthGanBase[yearGroup] + ((monthZhi - 2 + 12) % 12)) % 10;
+
+    // ---- 日柱（以1900-01-01甲戌日为基准推算）----
+    const base = new Date(1900, 0, 1);
+    const curr = new Date(year, month - 1, day);
+    const diff = Math.round((curr - base) / 86400000);
+    const dayGan = ((diff + 0) % 10 + 10) % 10;
+    const dayZhi = ((diff + 10) % 12 + 12) % 12;
+
+    // ---- 时柱（使用真太阳时计算的时辰）----
+    const hourGanBase = [0, 2, 4, 6, 8]; // 五鼠遁口诀
+    const dayGroup = dayGan % 5;
+    const hourGan = (hourGanBase[dayGroup] + trueHourIndex) % 10;
+    const hourZhi = trueHourIndex;
+
+    // ---- 五行统计（天干+地支藏干）----
+    const wuxing = {木:0,火:0,土:0,金:0,水:0};
+    [[yearGan,'gan'],[monthGan,'gan'],[dayGan,'gan'],[hourGan,'gan'],
+     [yearZhi,'zhi'],[monthZhi,'zhi'],[dayZhi,'zhi'],[hourZhi,'zhi']
+    ].forEach(([idx,type]) => {
+        if(type === 'gan') {
+            wuxing[wuXingGan[idx]] += 10;
+        } else {
+            const zhiStr = diZhi[idx];
+            zhiCangGan[zhiStr].forEach(([ganStr, w]) => {
+                const gi = tianGan.indexOf(ganStr);
+                wuxing[wuXingGan[gi]] += w;
+            });
+        }
+    });
+
+    return {
+        year:  {gan:yearGan,  zhi:yearZhi,  ganStr:tianGan[yearGan],  zhiStr:diZhi[yearZhi]},
+        month: {gan:monthGan, zhi:monthZhi, ganStr:tianGan[monthGan], zhiStr:diZhi[monthZhi]},
+        day:   {gan:dayGan,   zhi:dayZhi,   ganStr:tianGan[dayGan],   zhiStr:diZhi[dayZhi]},
+        hour:  {gan:hourGan,  zhi:hourZhi,  ganStr:tianGan[hourGan],  zhiStr:diZhi[hourZhi]},
+        wuxing,
+        debug: {jieqi, trueHour: trueHourIndex, longitude}
+    };
+}
+
+// ==================== 专业紫微斗数排盘 ====================
+// 安紫微星法：根据农历日期定位（此处以公历推近似）
+function calculateZiwei(year, month, day, hour, gender) {
+    // 命宫定位：虎口逆数，以寅宫(地支2)为起点
+    // 命宫地支 = (14 - 出生月 - 出生时支) mod 12，最终落在哪宫
+    // 生时地支 = hour（子=0...亥=11），月份从寅起
+    const lifePalaceZhi = ((14 - month - hour) % 12 + 12) % 12;
+
+    // 起紫微星：根据农历日（用公历日近似）
+    // 五行局数由命宫地支+年天干决定
+    const yearGan   = ((year - 4) % 10 + 10) % 10;
+    // 局数表：水二局,木三局,金四局,土五局,火六局
+    const wuXingJu  = [2, 3, 4, 5, 6];
+    // 纳音五行（简化：以年干尾数决定）
+    const ju        = wuXingJu[yearGan % 5];
+
+    // 紫微星位（从子宫0起数）
+    let ziweiPos = 0;
+    for(let pos = 0; pos < 12; pos++) {
+        if((pos * ju) % 10 === (day % 10) || (pos === 0 && day % 10 === 0)) {
+            ziweiPos = pos;
+            break;
+        }
+    }
+    // 若循环无结果，使用备用算法
+    if(ziweiPos === 0 && day % 10 !== 0) {
+        ziweiPos = Math.floor(day / ju) % 12;
+    }
+
+    // 14主星落位（相对紫微星偏移，按传统口诀）
+    const starOffset = {
+        '紫微':0,'天机':-1,'太阳':2,'武曲':4,'天同':5,
+        '廉贞':8,'天府':0,'太阴':0,'贪狼':0,'巨门':0,
+        '天相':0,'天梁':0,'七杀':0,'破军':0
+    };
+
+    // 天府系14星安星规则（相对天府星位）
+    // 紫微系：紫微→顺时针
+    const ziweiGroup  = ['紫微','天机','太阳','武曲','天同','廉贞'];
+    const ziweiOffset = [0, -1, 2, 4, 5, 8];
+
+    // 天府位 = 紫微对宫延伸（传统：子午为轴）
+    const tianfuPos = (12 - ziweiPos) % 12;
+    const tianfuGroup  = ['天府','太阴','贪狼','巨门','天相','天梁','七杀','破军'];
+    const tianfuOffset = [0, -1, -2, -3, -4, -5, -6, -11];
+
+    const starPositions = {};
+    ziweiGroup.forEach((star, i) => {
+        starPositions[star] = ((ziweiPos + ziweiOffset[i]) % 12 + 12) % 12;
+    });
+    tianfuGroup.forEach((star, i) => {
+        starPositions[star] = ((tianfuPos + tianfuOffset[i]) % 12 + 12) % 12;
+    });
+
+    // 命宫为0，其余宫位依次顺排
+    const palaces = {};
+    for(let i = 0; i < 12; i++) {
+        const palaceIndex = (i - lifePalaceZhi + 12) % 12;
+        const palaceName  = ziweiPalaces[palaceIndex];
+        const stars = [];
+        for(const [star, pos] of Object.entries(starPositions)) {
+            if(pos === i) stars.push(star);
+        }
+        palaces[palaceName] = {mainStars: stars, mainStar: stars[0] || '空宫'};
+    }
+
+    // ========== 四化星计算 ==========
+    // 获取生年地支（年支 = (年-3)%12，负数修正）
+    const yearZhi = ((year - 3) % 12 + 12) % 12;
+    // 获取四化星（根据年干）
+    const s4 = sihuaTable[yearGan];
+    // 四化星落宫（以命宫为基准）
+    const luPos = (lifePalaceZhi + sihuaPosTable.luPos[yearZhi]) % 12;
+    const quanPos = (lifePalaceZhi + sihuaPosTable.quanPos[yearZhi]) % 12;
+    const kePos = (lifePalaceZhi + sihuaPosTable.kePos[yearZhi]) % 12;
+    const jiPos = (lifePalaceZhi + sihuaPosTable.jiPos[yearZhi]) % 12;
+    // 记录四化星
+    palaces.sihua = {
+        lu: {star: s4.lu, palace: luPos, palaceName: ziweiPalaces[luPos]},
+        quan: {star: s4.quan, palace: quanPos, palaceName: ziweiPalaces[quanPos]},
+        ke: {star: s4.ke, palace: kePos, palaceName: ziweiPalaces[kePos]},
+        ji: {star: s4.ji, palace: jiPos, palaceName: ziweiPalaces[jiPos]}
+    };
+
+    return palaces;
+}
+
+// ==================== 西洋星盘精确计算 ====================
+// 行星公转周期（天）和起点偏移
+const PLANET_DATA = {
+    '太阳':   {period: 365.25, offset: 0,     baseSign: 0},
+    '月亮':   {period: 27.32,  offset: 0,     baseSign: 0},
+    '水星':   {period: 87.97,  offset: 45,    baseSign: 2},
+    '金星':   {period: 224.7,  offset: 120,   baseSign: 1},
+    '火星':   {period: 686.98, offset: 60,    baseSign: 4},
+    '木星':   {period: 4332.59,offset: 90,    baseSign: 8},
+    '土星':   {period: 10759.22,offset: 150,  baseSign: 9}
+};
+
+// 相位容许度（度）
+const ASPECT_ORBS = {
+    '合': 8,   // 0°
+    '六分': 6, // 60°
+    '四分': 8, // 90°
+    '三分': 7, // 120°
+    '对分': 8  // 180°
+};
+
+function calculateAstrology(year, month, day, hour) {
+    const planets = {};
+    const days = getDaysSince2000(year, month, day);
+
+    // 太阳（精确度数）
+    const sunIdx = getSunSign(month, day);
+    // 计算太阳精确度数（考虑日期在星座内的位置）
+    const [, signStart] = signBounds[sunIdx];
+    const prevSignEnd = signBounds[(sunIdx + 11) % 12];
+    const signDays = (month === 1 || month === 2) ? 30 :
+        (prevSignEnd[0] === month ? (prevSignEnd[1] - 1) : (signStart - 1));
+    const degreeInSign = Math.floor((day - signStart + 30) % 30);
+    planets['太阳'] = {sign: astrologySigns[sunIdx], degree: degreeInSign, long: sunIdx * 30 + degreeInSign};
+
+    // 月亮（约27.3天走完12宫）
+    const moonLong = ((days * (360 / 27.32)) + 180) % 360;
+    const moonIdx = Math.floor(moonLong / 30) % 12;
+    planets['月亮'] = {sign: astrologySigns[moonIdx], degree: moonLong % 30, long: moonLong};
+
+    // 水星（88天公转）
+    const mercuryLong = ((days * (360 / 87.97)) + PLANET_DATA['水星'].offset) % 360;
+    const mercuryIdx = Math.floor(mercuryLong / 30) % 12;
+    planets['水星'] = {sign: astrologySigns[mercuryIdx], degree: mercuryLong % 30, long: mercuryLong};
+
+    // 金星（225天公转）
+    const venusLong = ((days * (360 / 224.7)) + PLANET_DATA['金星'].offset) % 360;
+    const venusIdx = Math.floor(venusLong / 30) % 12;
+    planets['金星'] = {sign: astrologySigns[venusIdx], degree: venusLong % 30, long: venusLong};
+
+    // 火星（687天公转）
+    const marsLong = ((days * (360 / 686.98)) + PLANET_DATA['火星'].offset) % 360;
+    const marsIdx = Math.floor(marsLong / 30) % 12;
+    planets['火星'] = {sign: astrologySigns[marsIdx], degree: marsLong % 30, long: marsLong};
+
+    // 木星（12年公转）
+    const jupiterLong = ((days * (360 / 4332.59)) + PLANET_DATA['木星'].offset) % 360;
+    const jupiterIdx = Math.floor(jupiterLong / 30) % 12;
+    planets['木星'] = {sign: astrologySigns[jupiterIdx], degree: jupiterLong % 30, long: jupiterLong};
+
+    // 土星（29年公转）
+    const saturnLong = ((days * (360 / 10759.22)) + PLANET_DATA['土星'].offset) % 360;
+    const saturnIdx = Math.floor(saturnLong / 30) % 12;
+    planets['土星'] = {sign: astrologySigns[saturnIdx], degree: saturnLong % 30, long: saturnLong};
+
+    // 上升点（Ascendant）- 每2小时过一个星座
+    // 简化：asc = 太阳位置 + (小时 * 15)（忽略分钟精度）
+    const ascLong = (sunIdx * 30 + degreeInSign + hour * 15) % 360;
+    const ascIdx = Math.floor(ascLong / 30) % 12;
+    planets['上升'] = {sign: astrologySigns[ascIdx], degree: ascLong % 30, long: ascLong};
+
+    // 下降点（Descendant）- 上升点对宫
+    const descLong = (ascLong + 180) % 360;
+    const descIdx = Math.floor(descLong / 30) % 12;
+    planets['下降'] = {sign: astrologySigns[descIdx], degree: descLong % 30, long: descLong};
+
+    // 中天（Midheaven）- 上升点后90度
+    const mcLong = (ascLong + 90) % 360;
+    const mcIdx = Math.floor(mcLong / 30) % 12;
+    planets['中天'] = {sign: astrologySigns[mcIdx], degree: mcLong % 30, long: mcLong};
+
+    return planets;
+}
+
+// 计算两个星体之间的相位
+function calcAspect(long1, long2) {
+    const diff = Math.abs(long1 - long2);
+    const angle = Math.min(diff, 360 - diff);
+    const orb = Math.abs(long1 - long2) % 360;
+
+    if(orb <= 8 || 360 - orb <= 8) return {type: '合', angle: 0};       // 0°
+    if(Math.abs(angle - 60) <= 6) return {type: '六分', angle: 60};     // 60°
+    if(Math.abs(angle - 90) <= 8) return {type: '四分', angle: 90};     // 90°
+    if(Math.abs(angle - 120) <= 7) return {type: '三分', angle: 120};    // 120°
+    if(orb <= 8 || 360 - orb <= 8) return {type: '对分', angle: 180};    // 180°
+    return null;
+}
+
+// 计算双方所有重要相位
+function calcAllAspects(p1, p2) {
+    const aspects = [];
+    const importantPlanets = ['太阳', '月亮', '金星', '火星', '木星'];
+
+    for(const p of [p1, p2]) {
+        for(const pname of importantPlanets) {
+            if(!p.astrology[pname]) continue;
+            const pLong = p.astrology[pname].long;
+            for(const qname of importantPlanets) {
+                if(!p.astrology[qname] || pname === qname) continue;
+                const qLong = p.astrology[qname].long;
+                const asp = calcAspect(pLong, qLong);
+                if(asp) aspects.push({p1: pname, p2: qname, ...asp, person: 'self'});
+            }
+        }
+    }
+
+    // 计算两人之间的相位
+    for(const p1name of importantPlanets) {
+        if(!p1.astrology[p1name] || !p2.astrology[p1name]) continue;
+        const l1 = p1.astrology[p1name].long;
+        const l2 = p2.astrology[p1name].long;
+        const asp = calcAspect(l1, l2);
+        if(asp) aspects.push({p1: p1name, p2: p1name, ...asp, person: 'cross'});
+    }
+
+    return aspects;
+}
+
+function getDayOfYear(year, month, day) {
+    const start = new Date(year, 0, 0);
+    const date  = new Date(year, month - 1, day);
+    return Math.floor((date - start) / 86400000);
+}
+
+function getDaysSince2000(year, month, day) {
+    const base = new Date(2000, 0, 1);
+    const curr = new Date(year, month - 1, day);
+    return Math.floor((curr - base) / 86400000);
+}
+
+// ==================== 绘制紫微命盘 ====================
+function drawZiweiChart(palaces) {
+    const svg = document.getElementById('ziwei-chart');
+    if(!svg) return;
+    svg.innerHTML = '';
+    const ns = 'http://www.w3.org/2000/svg';
+
+    const addElem = (tag, attrs, text) => {
+        const el = document.createElementNS(ns, tag);
+        for(const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+        if(text !== undefined) el.textContent = text;
+        svg.appendChild(el);
+        return el;
+    };
+
+    addElem('circle', {cx:150,cy:150,r:140,fill:'none',stroke:'#8b5cf6','stroke-width':2});
+    addElem('circle', {cx:150,cy:150,r:60, fill:'none',stroke:'#a78bfa','stroke-width':1});
+
+    for(let i = 0; i < 12; i++) {
+        const ang = (i * 30 - 90) * Math.PI / 180;
+        addElem('line', {
+            x1: 150 + 60  * Math.cos(ang), y1: 150 + 60  * Math.sin(ang),
+            x2: 150 + 140 * Math.cos(ang), y2: 150 + 140 * Math.sin(ang),
+            stroke:'#c4b5fd','stroke-width':1
+        });
+    }
+
+    for(let i = 0; i < 12; i++) {
+        const midAng = ((i + 0.5) * 30 - 90) * Math.PI / 180;
+        const px = 150 + 120 * Math.cos(midAng);
+        const py = 150 + 120 * Math.sin(midAng);
+        const sx = 150 + 88  * Math.cos(midAng);
+        const sy = 150 + 88  * Math.sin(midAng);
+
+        addElem('text', {x:px, y:py, 'font-size':'9px', 'text-anchor':'middle', 'dominant-baseline':'middle', fill:'#7c3aed'}, ziweiPalaces[i]);
+        const star = palaces[ziweiPalaces[i]].mainStar;
+        addElem('text', {x:sx, y:sy, 'font-size':'8px', 'font-weight':'bold', 'text-anchor':'middle', 'dominant-baseline':'middle', fill:'#8b5cf6'}, star);
+    }
+
+    addElem('text', {x:150, y:150, 'text-anchor':'middle', 'dominant-baseline':'middle', 'font-size':'12px', 'font-weight':'bold', fill:'#7c3aed'}, '紫微斗数');
+}
+
+// ==================== 绘制西洋星盘 ====================
+function drawAstrologyChart(planets) {
+    const svg = document.getElementById('astrology-chart');
+    if(!svg) return;
+    svg.innerHTML = '';
+    const ns = 'http://www.w3.org/2000/svg';
+
+    const addElem = (tag, attrs, text) => {
+        const el = document.createElementNS(ns, tag);
+        for(const [k,v] of Object.entries(attrs)) el.setAttribute(k, v);
+        if(text !== undefined) el.textContent = text;
+        svg.appendChild(el);
+        return el;
+    };
+
+    addElem('circle', {cx:150,cy:150,r:140,fill:'none',stroke:'#a78bfa','stroke-width':2});
+    addElem('circle', {cx:150,cy:150,r:80, fill:'none',stroke:'#c4b5fd','stroke-width':1});
+
+    for(let i = 0; i < 12; i++) {
+        const ang = (i * 30 - 90) * Math.PI / 180;
+        addElem('line', {
+            x1: 150 + 80  * Math.cos(ang), y1: 150 + 80  * Math.sin(ang),
+            x2: 150 + 140 * Math.cos(ang), y2: 150 + 140 * Math.sin(ang),
+            stroke:'#c4b5fd','stroke-width':1
+        });
+        const midAng = ((i + 0.5) * 30 - 90) * Math.PI / 180;
+        addElem('text', {x:150+125*Math.cos(midAng), y:150+125*Math.sin(midAng), 'font-size':'9px','text-anchor':'middle','dominant-baseline':'middle',fill:'#7c3aed'}, astrologySigns[i]);
+    }
+
+    const pList = Object.entries(planets);
+    pList.forEach(([planet, data], idx) => {
+        const signIndex = astrologySigns.indexOf(data.sign);
+        const ang = (signIndex * 30 + data.degree - 90) * Math.PI / 180;
+        const r   = 90 + idx * 8;
+        const cx  = 150 + r * Math.cos(ang);
+        const cy  = 150 + r * Math.sin(ang);
+        addElem('circle', {cx, cy, r:6, fill:planetColors[idx]});
+        addElem('text', {x:cx, y:cy-10, 'text-anchor':'middle', 'font-size':'8px', fill:planetColors[idx]}, planet);
+    });
+
+    addElem('text', {x:150,y:150,'text-anchor':'middle','dominant-baseline':'middle','font-size':'12px','font-weight':'bold',fill:'#7c3aed'}, '西洋星盘');
+}
+
+// ==================== 生成命格 ====================
+function generateProfile() {
+    const name      = document.getElementById('name').value.trim();
+    const gender    = parseInt(document.getElementById('gender').value);
+    const birthdate = document.getElementById('birthdate').value;
+    const birthtime = parseInt(document.getElementById('birthtime').value);
+    const longitude = parseFloat(document.getElementById('birth-lng').value) || 120;
+    if(!name || !birthdate) return alert('请填写完整信息');
+    const [y,m,d] = birthdate.split('-').map(Number);
+    const bazi     = calculateBazi(y, m, d, birthtime, longitude);
+    const ziwei    = calculateZiwei(y, m, d, birthtime, gender);
+    const astrology = calculateAstrology(y, m, d, birthtime);
+    currentProfile = {name, gender, birthdate, birthtime, longitude, y, m, d, bazi, ziwei, astrology};
+    displayProfile();
+    document.getElementById('profile-result').classList.remove('hidden');
+    document.getElementById('nfcSendBtn').disabled = false;
+}
+
+function displayProfile() {
+    const p = currentProfile;
+    const wx = p.bazi.wuxing;
+    const cmdStar = p.ziwei['命宫'].mainStar;
+    document.getElementById('basic-info').innerHTML = `
+        <p class="flex justify-between"><span class="text-gray-500">姓名</span><span class="font-medium text-dark">${p.name}</span></p>
+        <p class="flex justify-between"><span class="text-gray-500">性别</span><span class="font-medium text-dark">${p.gender===1?'男':'女'}</span></p>
+        <p class="flex justify-between"><span class="text-gray-500">八字</span><span class="font-medium text-primary">${p.bazi.year.ganStr}${p.bazi.year.zhiStr} ${p.bazi.month.ganStr}${p.bazi.month.zhiStr} ${p.bazi.day.ganStr}${p.bazi.day.zhiStr} ${p.bazi.hour.ganStr}${p.bazi.hour.zhiStr}</span></p>
+        <p class="flex justify-between"><span class="text-gray-500">五行</span><span class="font-medium text-secondary">木${wx.木} 火${wx.火} 土${wx.土} 金${wx.金} 水${wx.水}</span></p>
+        <p class="flex justify-between"><span class="text-gray-500">命宫主星</span><span class="font-medium text-accent">${cmdStar}（${starType[cmdStar] || '空宫'}）</span></p>
+        <p class="flex justify-between"><span class="text-gray-500">太阳星座</span><span class="font-medium text-dark">${p.astrology['太阳'].sign}（${astrologyElements[astrologySigns.indexOf(p.astrology['太阳'].sign)]}象）</span></p>
+        <p class="flex justify-between"><span class="text-gray-500">月亮星座</span><span class="font-medium text-dark">${p.astrology['月亮'].sign}</span></p>
+        <p class="flex justify-between"><span class="text-gray-500">上升星座</span><span class="font-medium text-dark">${p.astrology['上升'].sign}</span></p>
+    `;
+    drawZiweiChart(p.ziwei);
+    drawAstrologyChart(p.astrology);
+}
+
+// ==================== Toast提示 ====================
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 2200);
+}
+
+// ==================== 用户管理 ====================
+function getAllUsers() {
+    return JSON.parse(localStorage.getItem('hcc_users') || '[]');
+}
+
+function getCurrentUserId() {
+    return localStorage.getItem('hcc_currentUserId') || 'guest';
+}
+
+function setCurrentUser(userId) {
+    localStorage.setItem('hcc_currentUserId', userId);
+    // 保存当前用户ID对应的我的命格
+    const myProfile = localStorage.getItem('hcc_myProfile');
+    if (myProfile) {
+        localStorage.setItem(`hcc_myProfile_${userId}`, myProfile);
+    }
+    updateUserBadge();
+    // 加载当前用户的档案
+    loadCurrentUserProfile();
+}
+
+function switchToUser(userId, userName) {
+    // 保存当前用户的档案
+    const myProfile = localStorage.getItem('hcc_myProfile');
+    if (myProfile) {
+        const currentUserId = getCurrentUserId();
+        localStorage.setItem(`hcc_myProfile_${currentUserId}`, myProfile);
+    }
+    // 切换用户
+    setCurrentUser(userId);
+    // 加载新用户的档案
+    const savedProfile = localStorage.getItem(`hcc_myProfile_${userId}`);
+    if (savedProfile) {
+        try {
+            currentProfile = JSON.parse(savedProfile);
+            showTab('profile');
+            displayProfileResult(currentProfile);
+            showToast(`已切换到 ${userName}`, 'info');
+        } catch(e) {
+            showToast('加载用户档案失败', 'error');
+        }
+    } else {
+        // 清空当前输入，切换到新用户
+        clearProfileForm();
+        showToast(`已切换到 ${userName}（请重新录入命格）`, 'info');
+    }
+    toggleUserDropdown();
+}
+
+function updateUserBadge() {
+    const userId = getCurrentUserId();
+    const users = getAllUsers();
+    let name = '访客';
+    
+    if (userId !== 'guest') {
+        const user = users.find(u => u.id === userId);
+        if (user) name = user.name;
+    }
+    
+    document.getElementById('current-user-name').textContent = name;
+}
+
+function toggleUserDropdown() {
+    const dropdown = document.getElementById('user-dropdown');
+    dropdown.classList.toggle('hidden');
+    
+    if (!dropdown.classList.contains('hidden')) {
+        renderUserDropdown();
+    }
+}
+
+// 点击外部关闭下拉框
+document.addEventListener('click', function(e) {
+    const badge = document.getElementById('user-badge');
+    const dropdown = document.getElementById('user-dropdown');
+    if (badge && !badge.contains(e.target) && dropdown && !dropdown.contains(e.target)) {
+        dropdown.classList.add('hidden');
+    }
+});
+
+function renderUserDropdown() {
+    const users = getAllUsers();
+    const currentUserId = getCurrentUserId();
+    const myProfile = localStorage.getItem('hcc_myProfile');
+    let hasCurrentProfile = false;
+    if (myProfile) {
+        try {
+            const p = JSON.parse(myProfile);
+            if (p.name) hasCurrentProfile = true;
+        } catch(e) {}
+    }
+    
+    let html = `
+        <div class="user-dropdown-item ${currentUserId === 'guest' ? 'active' : ''}" onclick="switchToUser('guest', '访客')">
+            <div>
+                <div class="user-name">👤 访客模式</div>
+                <div class="user-meta">不保存本地</div>
+            </div>
+            ${currentUserId === 'guest' ? '<span class="check-icon">✓</span>' : ''}
+        </div>
+    `;
+    
+    if (users.length > 0 || hasCurrentProfile) {
+        html += '<div style="padding:8px 16px;font-size:11px;color:#9ca3af;border-bottom:1px solid #f3e8ff;">已有用户</div>';
+        
+        // 如果当前有已保存的档案且不在用户列表中，显示为"未命名用户"
+        if (hasCurrentProfile && currentUserId !== 'guest') {
+            const exists = users.some(u => u.id === currentUserId);
+            if (!exists) {
+                const p = JSON.parse(myProfile);
+                html += `
+                    <div class="user-dropdown-item ${currentUserId === 'guest' ? '' : 'active'}" onclick="switchToUser('${currentUserId}', '${p.name || '当前用户'}')">
+                        <div>
+                            <div class="user-name">📝 ${p.name || '当前用户'}</div>
+                            <div class="user-meta">${p.gender === 1 ? '♂' : '♀'} ${p.birthdate || ''}</div>
+                        </div>
+                        <span class="check-icon">✓</span>
+                    </div>
+                `;
+            }
+        }
+        
+        users.forEach(user => {
+            const isActive = user.id === currentUserId;
+            const profile = localStorage.getItem(`hcc_myProfile_${user.id}`);
+            let meta = '';
+            if (profile) {
+                try {
+                    const p = JSON.parse(profile);
+                    meta = `${p.gender === 1 ? '♂' : '♀'} ${p.birthdate || ''}`;
+                } catch(e) {}
+            }
+            html += `
+                <div class="user-dropdown-item ${isActive ? 'active' : ''}" onclick="switchToUser('${user.id}', '${user.name}')">
+                    <div>
+                        <div class="user-name">👤 ${user.name}</div>
+                        <div class="user-meta">${meta || '未录入命格'}</div>
+                    </div>
+                    ${isActive ? '<span class="check-icon">✓</span>' : ''}
+                </div>
+            `;
+        });
+    }
+    
+    html += `
+        <div style="padding:8px 16px;border-top:1px solid #f3e8ff;">
+            <button onclick="showAddUserModal()" class="w-full py-2 px-4 rounded-lg bg-primary/10 text-primary text-sm font-bold hover:bg-primary/20 transition">
+                + 添加新用户
+            </button>
+        </div>
+    `;
+    
+    document.getElementById('user-dropdown').innerHTML = html;
+}
+
+function showAddUserModal() {
+    toggleUserDropdown();
+    const name = prompt('请输入新用户姓名（用于切换区分）：');
+    if (name && name.trim()) {
+        const users = getAllUsers();
+        const newUser = {
+            id: 'user_' + Date.now(),
+            name: name.trim()
+        };
+        users.push(newUser);
+        localStorage.setItem('hcc_users', JSON.stringify(users));
+        setCurrentUser(newUser.id);
+        showToast(`已创建用户：${newUser.name}`, 'success');
+        showTab('profile');
+    }
+}
+
+function loadCurrentUserProfile() {
+    const userId = getCurrentUserId();
+    if (userId === 'guest') {
+        currentProfile = null;
+        return;
+    }
+    const savedProfile = localStorage.getItem(`hcc_myProfile_${userId}`);
+    if (savedProfile) {
+        try {
+            currentProfile = JSON.parse(savedProfile);
+        } catch(e) {
+            currentProfile = null;
+        }
+    } else {
+        currentProfile = null;
+    }
+}
+
+function clearProfileForm() {
+    document.getElementById('name').value = '';
+    document.getElementById('gender').value = '1';
+    document.getElementById('birthdate').value = '';
+    document.getElementById('birthtime').value = '0';
+    document.getElementById('birth-city').value = '';
+    document.getElementById('birth-lng').value = '120';
+    document.getElementById('profile-result').classList.add('hidden');
+    document.getElementById('profile-form').classList.remove('hidden');
+    currentProfile = null;
+}
+
+// ==================== 保存/加载 ====================
+function saveProfile() {
+    if(!currentProfile) {
+        showToast('请先生成命格', 'error');
+        return;
+    }
+    
+    const saveBtn = document.getElementById('btn-save-profile');
+    const originalText = saveBtn.textContent;
+    
+    // 显示loading状态
+    saveBtn.classList.add('btn-loading');
+    saveBtn.textContent = '保存中';
+    saveBtn.disabled = true;
+    
+    // 模拟异步保存（给用户看到反馈）
+    setTimeout(() => {
+        const userId = getCurrentUserId();
+        
+        // 如果是访客模式，自动创建用户
+        if (userId === 'guest') {
+            const name = currentProfile.name || '用户_' + Date.now().toString().slice(-4);
+            const users = getAllUsers();
+            const newUser = {
+                id: 'user_' + Date.now(),
+                name: name
+            };
+            users.push(newUser);
+            localStorage.setItem('hcc_users', JSON.stringify(users));
+            userId = newUser.id;
+            localStorage.setItem('hcc_currentUserId', userId);
+            updateUserBadge();
+        }
+        
+        // 保存到当前用户
+        localStorage.setItem(`hcc_myProfile_${userId}`, JSON.stringify(currentProfile));
+        localStorage.setItem('hcc_myProfile', JSON.stringify(currentProfile));
+        
+        // 同时保存到公共档案列表（便于后续导入）
+        const saved = JSON.parse(localStorage.getItem('hcc_profiles') || '[]');
+        const idx   = saved.findIndex(p => p.name === currentProfile.name);
+        if(idx >= 0) saved[idx] = currentProfile;
+        else saved.push(currentProfile);
+        localStorage.setItem('hcc_profiles', JSON.stringify(saved));
+        
+        // 恢复按钮状态
+        saveBtn.classList.remove('btn-loading');
+        saveBtn.textContent = originalText;
+        saveBtn.disabled = false;
+        
+        // 显示成功提示
+        showToast('✅ 保存成功！', 'success');
+        
+        loadSavedProfiles();
+        
+        // 更新用户下拉显示
+        renderUserDropdown();
+    }, 300);
+}
+
+function loadSavedProfiles() {
+    const saved = JSON.parse(localStorage.getItem('hcc_profiles') || '[]');
+    const el    = document.getElementById('saved-profiles');
+    if(!el) return;
+    if(saved.length === 0) {
+        el.innerHTML = '<p class="text-gray-400 text-sm">暂无保存的命格</p>';
+        return;
+    }
+    el.innerHTML = saved.map((p, i) => `
+        <div class="flex justify-between items-center p-3 bg-light rounded-xl">
+            <div>
+                <span class="font-medium text-dark">${p.name}</span>
+                <span class="text-gray-400 text-xs ml-2">${p.gender===1?'♂':'♀'} ${p.birthdate}</span>
+            </div>
+            <button onclick="deleteSavedProfile(${i})" class="text-danger text-xs px-2 py-1 rounded border border-danger">删除</button>
+        </div>
+    `).join('');
+}
+
+function deleteSavedProfile(i) {
+    const saved = JSON.parse(localStorage.getItem('hcc_profiles') || '[]');
+    saved.splice(i, 1);
+    localStorage.setItem('hcc_profiles', JSON.stringify(saved));
+    loadSavedProfiles();
+}
+
+// ==================== 专业八字匹配算法（满分40）====================
+function matchBazi(p1, p2) {
+    let score = 0;
+    const details = [];
+
+    const w1 = p1.bazi.wuxing;
+    const w2 = p2.bazi.wuxing;
+
+    // 1. 五行互补（最高16分）
+    // 原理：一方所缺，另一方所多，构成互补
+    let complement = 0;
+    ['木','火','土','金','水'].forEach(wx => {
+        const v1 = w1[wx] || 0;
+        const v2 = w2[wx] || 0;
+        // 如果一方多一方少，互补分高
+        const avg  = (v1 + v2) / 2;
+        const diff = Math.abs(v1 - v2);
+        if(diff > 15) complement += 3.2;       // 强互补
+        else if(diff > 8) complement += 1.6;   // 中等互补
+        else complement += 0.8;                 // 均衡
+    });
+    const complementScore = Math.min(16, Math.round(complement));
+    score += complementScore;
+    details.push(`五行互补：${complementScore}/16分（一方所缺另一方所补）`);
+
+    // 2. 日干五合（最高10分）
+    // 天干五合：甲己、乙庚、丙辛、丁壬、戊癸
+    const ganHePairs = [[0,4],[1,5],[2,6],[3,7],[4,8],[5,9],[6,0],[7,1],[8,2],[9,3]];
+    // 实际五合：甲己(0,4),乙庚(1,5),丙辛(2,6),丁壬(3,7),戊癸(4,8)
+    const truHe = [[0,4],[1,5],[2,6],[3,7],[4,8]];
+    const dg1 = p1.bazi.day.gan;
+    const dg2 = p2.bazi.day.gan;
+    const isHe = truHe.some(([a,b]) => (a===dg1&&b===dg2)||(a===dg2&&b===dg1));
+    const wx1  = wuXingGan[dg1];
+    const wx2  = wuXingGan[dg2];
+    let dayScore = 0;
+    if(isHe) {
+        dayScore = 10;
+        details.push(`日干${tianGan[dg1]}${tianGan[dg2]}天干五合：满分10/10分`);
+    } else if(wuXingSheng[wx1] === wx2 || wuXingSheng[wx2] === wx1) {
+        dayScore = 7;
+        details.push(`日干五行相生（${wx1}→${wx2}或反）：7/10分`);
+    } else if(wx1 === wx2) {
+        dayScore = 5;
+        details.push(`日干五行比和（同为${wx1}）：5/10分`);
+    } else {
+        dayScore = 2;
+        details.push(`日干五行相克：2/10分`);
+    }
+    score += dayScore;
+
+    // 3. 地支六合（最高8分）
+    // 六合：子丑、寅亥、卯戌、辰酉、巳申、午未
+    const liuHe = [[0,1],[2,11],[3,10],[4,9],[5,8],[6,7]];
+    const zhiPairs = [
+        [p1.bazi.year.zhi, p2.bazi.year.zhi],
+        [p1.bazi.month.zhi, p2.bazi.month.zhi],
+        [p1.bazi.day.zhi, p2.bazi.day.zhi],
+        [p1.bazi.hour.zhi, p2.bazi.hour.zhi]
+    ];
+    let heCount = 0;
+    zhiPairs.forEach(([z1, z2]) => {
+        if(liuHe.some(([a,b]) => (a===z1&&b===z2)||(a===z2&&b===z1))) heCount++;
+    });
+    // 三合：申子辰(8,0,4)，巳酉丑(5,9,1)，寅午戌(2,6,10)，亥卯未(11,3,7)
+    const sanHe = [[8,0,4],[5,9,1],[2,6,10],[11,3,7]];
+    const allZhi1 = [p1.bazi.year.zhi, p1.bazi.month.zhi, p1.bazi.day.zhi, p1.bazi.hour.zhi];
+    const allZhi2 = [p2.bazi.year.zhi, p2.bazi.month.zhi, p2.bazi.day.zhi, p2.bazi.hour.zhi];
+    let sanHeScore = 0;
+    sanHe.forEach(group => {
+        const fromP1 = group.filter(z => allZhi1.includes(z)).length;
+        const fromP2 = group.filter(z => allZhi2.includes(z)).length;
+        if(fromP1 >= 1 && fromP2 >= 1) sanHeScore += 1;
+    });
+    const zhiScore = Math.min(8, heCount * 2 + sanHeScore);
+    score += zhiScore;
+    details.push(`地支六合${heCount}对，三合${sanHeScore}组：${zhiScore}/8分`);
+
+    // 4. 三刑六冲（扣分，最低-6分）
+    // 冲：子午、丑未、寅申、卯酉、辰戌、巳亥
+    const liuChong = [[0,6],[1,7],[2,8],[3,9],[4,10],[5,11]];
+    let chongCount = 0;
+    zhiPairs.forEach(([z1,z2]) => {
+        if(liuChong.some(([a,b]) => (a===z1&&b===z2)||(a===z2&&b===z1))) chongCount++;
+    });
+    const deduct = Math.min(6, chongCount * 2);
+    score -= deduct;
+    if(deduct > 0) details.push(`⚠️ 地支相冲${chongCount}对，扣${deduct}分`);
+
+    score = Math.max(0, Math.min(40, score));
+    return {score, details};
+}
+
+// ==================== 专业紫微匹配算法（满分35，含四化）====================
+function matchZiwei(p1, p2) {
+    let score = 0;
+    const details = [];
+
+    // 1. 命宫主星相生相合（最高12分）
+    const star1 = p1.ziwei['命宫'].mainStar;
+    const star2 = p2.ziwei['命宫'].mainStar;
+    const type1 = starType[star1] || '空宫';
+    const type2 = starType[star2] || '空宫';
+
+    // 星曜配合关系表
+    const starCompat = {
+        '紫微':['天府','天相','天梁'],
+        '天机':['太阴','天梁','天同'],
+        '太阳':['太阴','天梁','巨门'],
+        '武曲':['天府','贪狼','七杀'],
+        '天同':['太阴','天梁','天机'],
+        '廉贞':['天府','贪狼','天相'],
+        '天府':['紫微','武曲','廉贞'],
+        '太阴':['太阳','天机','天同'],
+        '贪狼':['紫微','武曲','廉贞'],
+        '巨门':['天机','太阳'],
+        '天相':['紫微','廉贞'],
+        '天梁':['太阳','天机','天同'],
+        '七杀':['武曲'],
+        '破军':['紫微']
+    };
+
+    if(star1 !== '空宫' && star2 !== '空宫') {
+        if(starCompat[star1] && starCompat[star1].includes(star2)) {
+            score += 12;
+            details.push(`命宫${star1}与${star2}为吉星配合：12/12分`);
+        } else if(type1 === type2) {
+            score += 8;
+            details.push(`同为${type1}星系：8/12分`);
+        } else {
+            score += 5;
+            details.push(`命宫主星${star1}与${star2}：基础5/12分`);
+        }
+    } else {
+        score += 3;
+        details.push('命宫空宫：3/12分');
+    }
+
+    // 2. 夫妻宫主星分析（最高8分）
+    const fuqi1 = p1.ziwei['夫妻'].mainStar;
+    const fuqi2 = p2.ziwei['夫妻'].mainStar;
+    const fuqiJi  = ['天同','太阴','天梁','天机','紫微'];
+    const fuqiBad = ['七杀','破军','廉贞','武曲'];
+    let fuqiScore = 4;
+    if(fuqiJi.includes(fuqi1))  fuqiScore += 1;
+    if(fuqiJi.includes(fuqi2))  fuqiScore += 1;
+    if(fuqiBad.includes(fuqi1)) fuqiScore -= 1;
+    if(fuqiBad.includes(fuqi2)) fuqiScore -= 1;
+    if(fuqi1 === fuqi2) fuqiScore += 2;
+    fuqiScore = Math.max(0, Math.min(8, fuqiScore));
+    score += fuqiScore;
+    details.push(`夫妻宫（${fuqi1}↔${fuqi2}）：${fuqiScore}/8分`);
+
+    // 3. 四化星匹配分析（最高10分）【新增】
+    // 四化星分析：化禄（财禄）、化权（权力）、化科（功名）、化忌（牵挂）
+    const s1 = p1.ziwei.sihua || {};
+    const s2 = p2.ziwei.sihua || {};
+    let sihuaScore = 0;
+
+    // 化禄匹配：两人都化禄，且落在对方命宫或财帛宫，大吉
+    if(s1.lu && s2.lu) {
+        const luPalaceMatch = [1, 5, 0]; // 命宫、财帛宫索引
+        if(luPalaceMatch.includes(s1.lu.palace) && luPalaceMatch.includes(s2.lu.palace)) {
+            sihuaScore += 3;
+            details.push(`双方化禄落命/财宫，财禄互旺：+3分`);
+        } else if(s1.lu.star === s2.lu.star) {
+            sihuaScore += 2;
+            details.push(`双方同化${s1.lu.star}：+2分`);
+        } else {
+            sihuaScore += 1;
+            details.push(`化禄：${s1.lu.star}↔${s2.lu.star}：+1分`);
+        }
+    }
+
+    // 化忌分析：化忌落在对方命宫有牵连，落在自己命宫有挑战
+    if(s1.ji && s2.ji) {
+        if(s1.ji.palace === 0 && s2.ji.palace === 0) {
+            // 双方化忌都在命宫，重大挑战
+            sihuaScore -= 2;
+            details.push(`⚠️ 双方化忌落命宫，命运考验大：-2分`);
+        } else if(s1.ji.palace === 0 || s2.ji.palace === 0) {
+            // 一方化忌在命宫
+            sihuaScore -= 1;
+            details.push(`⚠️ 一方化忌落命宫，需磨合：-1分`);
+        } else if(s1.ji.star === s2.ji.star) {
+            sihuaScore += 1;
+            details.push(`双方同化${s1.ji.star}（忌），共患难：+1分`);
+        } else {
+            sihuaScore += 1;
+            details.push(`化忌：${s1.ji.star}↔${s2.ji.star}：各有牵挂+1分`);
+        }
+    }
+
+    // 化科加分：学业、声誉
+    if(s1.ke && s2.ke && s1.ke.star === s2.ke.star) {
+        sihuaScore += 1;
+        details.push(`双方同化${s1.ke.star}（科），学业相投：+1分`);
+    }
+
+    // 化权加分：权力、地位
+    if(s1.quan && s2.quan && s1.quan.star === s2.quan.star) {
+        sihuaScore += 1;
+        details.push(`双方同化${s1.quan.star}（权），事业共振：+1分`);
+    }
+
+    sihuaScore = Math.max(0, Math.min(10, sihuaScore));
+    score += sihuaScore;
+    details.push(`四化星综合：${sihuaScore}/10分`);
+
+    // 4. 福德宫匹配（最高5分）
+    const fude1 = p1.ziwei['福德'].mainStar;
+    const fude2 = p2.ziwei['福德'].mainStar;
+    const fudeScore = (fuqiJi.includes(fude1) ? 3 : 1) + (fuqiJi.includes(fude2) ? 3 : 1);
+    score += Math.min(5, fudeScore);
+    details.push(`福德宫（${fude1}↔${fude2}）：${Math.min(5, fudeScore)}/5分`);
+
+    score = Math.max(0, Math.min(35, score));
+    return {score, details};
+}
+
+// ==================== 专业星盘匹配算法（满分25，含精确相位）====================
+function matchAstrology(p1, p2) {
+    let score = 0;
+    const details = [];
+
+    const sign1 = p1.astrology['太阳'].sign;
+    const sign2 = p2.astrology['太阳'].sign;
+    const elem1 = astrologyElements[astrologySigns.indexOf(sign1)];
+    const elem2 = astrologyElements[astrologySigns.indexOf(sign2)];
+
+    // 1. 太阳星座精确相位（最高8分）
+    const idx1 = astrologySigns.indexOf(sign1);
+    const idx2 = astrologySigns.indexOf(sign2);
+    const diff = Math.abs(idx1 - idx2);
+    const phase = Math.min(diff, 12 - diff);
+
+    let sunScore = 0;
+    if(phase === 0) {
+        sunScore = 6;
+        details.push(`太阳合相（同为${sign1}）：6/8分`);
+    } else if(phase === 4) {
+        sunScore = 8;
+        details.push(`太阳三分相（${sign1}△${sign2}）：8/8分`);
+    } else if(phase === 3) {
+        sunScore = 4;
+        details.push(`太阳四分相（${sign1}□${sign2}）：4/8分`);
+    } else if(phase === 6) {
+        sunScore = 6;
+        details.push(`太阳对分相（${sign1}☍${sign2}）：6/8分`);
+    } else if(phase === 2) {
+        sunScore = 5;
+        details.push(`太阳六分相（${sign1}⚹${sign2}）：5/8分`);
+    } else {
+        sunScore = 3;
+        details.push(`太阳${sign1}与${sign2}弱相位：3/8分`);
+    }
+    score += sunScore;
+
+    // 2. 精确行星相位匹配（最高10分）【升级】
+    // 计算双方各重要行星之间的精确相位
+    const importantPlanets = ['太阳', '月亮', '金星', '火星'];
+    let aspectScore = 0;
+    const aspectDetails = [];
+
+    importantPlanets.forEach(pname => {
+        if(!p1.astrology[pname] || !p2.astrology[pname]) return;
+        const long1 = p1.astrology[pname].long;
+        const long2 = p2.astrology[pname].long;
+        const aspect = calcAspect(long1, long2);
+
+        if(aspect) {
+            if(aspect.type === '三分') {
+                aspectScore += 3;
+                aspectDetails.push(`${pname}三分`);
+            } else if(aspect.type === '六分') {
+                aspectScore += 2;
+                aspectDetails.push(`${pname}六分`);
+            } else if(aspect.type === '对分') {
+                aspectScore += 2;
+                aspectDetails.push(`${pname}对分`);
+            } else if(aspect.type === '合') {
+                aspectScore += 2;
+                aspectDetails.push(`${pname}合相`);
+            } else if(aspect.type === '四分') {
+                aspectScore += 1;
+                aspectDetails.push(`${pname}四分`);
+            }
+        }
+    });
+
+    aspectScore = Math.min(10, aspectScore);
+    score += aspectScore;
+    if(aspectDetails.length > 0) {
+        details.push(`行星相位（${aspectDetails.join(',')}）：${aspectScore}/10分`);
+    } else {
+        details.push(`行星相位：0/10分`);
+    }
+
+    // 3. 月亮-金星轴线（最高4分）【新增】
+    // 月亮代表情感，金星代表爱情
+    let moonVenusScore = 0;
+    if(p1.astrology['月亮'] && p1.astrology['金星'] && p2.astrology['月亮'] && p2.astrology['金星']) {
+        // 计算月亮-金星角度
+        const m1 = p1.astrology['月亮'].long;
+        const v1 = p1.astrology['金星'].long;
+        const m2 = p2.astrology['月亮'].long;
+        const v2 = p2.astrology['金星'].long;
+
+        // 两人的月亮或金星形成良好相位
+        const mvAsp1 = calcAspect(m1, v2);
+        const mvAsp2 = calcAspect(m2, v1);
+        const mvAsp3 = calcAspect(m1, m2);
+        const mvAsp4 = calcAspect(v1, v2);
+
+        [mvAsp1, mvAsp2, mvAsp3, mvAsp4].forEach(asp => {
+            if(asp && (asp.type === '三分' || asp.type === '六分' || asp.type === '合')) {
+                moonVenusScore += 1;
+            }
+        });
+    }
+    moonVenusScore = Math.min(4, moonVenusScore);
+    score += moonVenusScore;
+    if(moonVenusScore > 0) {
+        details.push(`月亮-金星轴线和谐：${moonVenusScore}/4分`);
+    } else {
+        details.push(`月亮-金星轴线：${moonVenusScore}/4分`);
+    }
+
+    // 4. 元素匹配（最高3分）
+    const elemCompat = {'火':['火','风'], '土':['土','水'], '风':['风','火'], '水':['水','土']};
+    if(elem1 === elem2) {
+        score += 3;
+        details.push(`同元素（${elem1}象）：3/3分`);
+    } else if(elemCompat[elem1] && elemCompat[elem1].includes(elem2)) {
+        score += 2;
+        details.push(`相合元素（${elem1}+${elem2}）：2/3分`);
+    } else {
+        score += 1;
+        details.push(`元素差异（${elem1}+${elem2}）：1/3分`);
+    }
+
+    score = Math.max(0, Math.min(25, score));
+    return {score, details};
+}
+
+// ==================== 城市选择处理 ====================
+// 城市选择变化时更新经度
+function onCityChange(prefix, lng) {
+    const lngInput = document.getElementById(prefix + '-lng');
+    if(lngInput && lng) {
+        lngInput.value = parseFloat(lng);
+    }
+}
+
+// ==================== 确认按钮功能 ====================
+function confirmP1() {
+    const name = document.getElementById('p1-name').value.trim();
+    const date = document.getElementById('p1-birthdate').value;
+    const btn = document.getElementById('btn-confirm-p1');
+    if(!name || !date) {
+        btn.textContent = '请填写姓名和日期！';
+        btn.classList.remove('bg-primary/10', 'text-primary');
+        btn.classList.add('bg-danger/10', 'text-danger');
+        setTimeout(() => resetConfirmBtn('p1'), 2000);
+        return;
+    }
+    btn.textContent = '✓ 已确认';
+    btn.classList.remove('bg-primary/10', 'text-primary');
+    btn.classList.add('bg-success/10', 'text-success');
+    btn.disabled = true;
+}
+
+function confirmP2() {
+    const name = document.getElementById('p2-name').value.trim();
+    const date = document.getElementById('p2-birthdate').value;
+    const btn = document.getElementById('btn-confirm-p2');
+    if(!name || !date) {
+        btn.textContent = '请填写姓名和日期！';
+        btn.classList.remove('bg-secondary/10', 'text-secondary');
+        btn.classList.add('bg-danger/10', 'text-danger');
+        setTimeout(() => resetConfirmBtn('p2'), 2000);
+        return;
+    }
+    btn.textContent = '✓ 已确认';
+    btn.classList.remove('bg-secondary/10', 'text-secondary');
+    btn.classList.add('bg-success/10', 'text-success');
+    btn.disabled = true;
+}
+
+function resetConfirmBtn(who) {
+    const btn = document.getElementById('btn-confirm-' + who);
+    if(who === 'p1') {
+        btn.textContent = '确认录入';
+        btn.classList.remove('bg-danger/10', 'text-danger', 'bg-success/10', 'text-success');
+        btn.classList.add('bg-primary/10', 'text-primary');
+        btn.disabled = false;
+    } else {
+        btn.textContent = '确认录入';
+        btn.classList.remove('bg-danger/10', 'text-danger', 'bg-success/10', 'text-success');
+        btn.classList.add('bg-secondary/10', 'text-secondary');
+        btn.disabled = false;
+    }
+}
+
+// ==================== 生成综合匹配报告 ====================
+function buildPersonFromInputs(prefix) {
+    const name      = document.getElementById(`${prefix}-name`).value.trim();
+    const gender    = parseInt(document.getElementById(`${prefix}-gender`).value);
+    const birthdate = document.getElementById(`${prefix}-birthdate`).value;
+    const birthtime = parseInt(document.getElementById(`${prefix}-birthtime`).value);
+    const longitude = parseFloat(document.getElementById(`${prefix}-lng`).value) || 120;
+    if(!name || !birthdate) return null;
+    const [y,m,d] = birthdate.split('-').map(Number);
+    return {
+        name, gender, birthdate, birthtime, longitude, y, m, d,
+        bazi:     calculateBazi(y, m, d, birthtime, longitude),
+        ziwei:    calculateZiwei(y, m, d, birthtime, gender),
+        astrology: calculateAstrology(y, m, d, birthtime)
+    };
+}
+
+function generateMatchReport() {
+    const p1 = buildPersonFromInputs('p1');
+    const p2 = buildPersonFromInputs('p2');
+    if(!p1 || !p2) return alert('请填写完整的双方信息');
+
+    const bazi     = matchBazi(p1, p2);
+    const ziwei    = matchZiwei(p1, p2);
+    const astro    = matchAstrology(p1, p2);
+    const total    = Math.round(bazi.score * 0.4 / 40 * 100 + ziwei.score * 0.35 / 35 * 100 + astro.score * 0.25 / 25 * 100);
+    // 加权综合分（各维度权重：八字40%,紫微35%,星盘25%，映射到百分制）
+    const composite = Math.round((bazi.score / 40) * 40 + (ziwei.score / 35) * 35 + (astro.score / 25) * 25);
+
+    displayMatchReport(p1, p2, {bazi, ziwei, astro, composite, total});
+}
+
+function displayMatchReport(p1, p2, result) {
+    document.getElementById('match-result').classList.remove('hidden');
+    document.getElementById('match-title').textContent = `${p1.name} × ${p2.name}`;
+
+    const t = result.total;
+    document.getElementById('match-score').textContent = `${t}分`;
+    let suggestion = '';
+    if(t >= 85) suggestion = '💑 天作之合，强烈推荐！';
+    else if(t >= 70) suggestion = '💕 缘分深厚，适合长期发展';
+    else if(t >= 55) suggestion = '🌸 有一定缘分，需要磨合';
+    else if(t >= 40) suggestion = '⚠️ 差异较大，需谨慎考量';
+    else suggestion = '❌ 命理差距较大，不太相配';
+    document.getElementById('match-suggestion').textContent = suggestion;
+
+    document.getElementById('bazi-detail').innerHTML   = result.bazi.details.map(d => `<p>• ${d}</p>`).join('');
+    document.getElementById('ziwei-detail').innerHTML  = result.ziwei.details.map(d => `<p>• ${d}</p>`).join('');
+    document.getElementById('astrology-detail').innerHTML = result.astro.details.map(d => `<p>• ${d}</p>`).join('');
+
+    const ctx = document.getElementById('match-chart');
+    if(matchChartInst) matchChartInst.destroy();
+    matchChartInst = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['八字五行','紫微斗数','西洋星盘'],
+            datasets: [{
+                label: '匹配度',
+                data: [
+                    Math.round(result.bazi.score / 40 * 100),
+                    Math.round(result.ziwei.score / 35 * 100),
+                    Math.round(result.astro.score / 25 * 100)
+                ],
+                backgroundColor: 'rgba(139,92,246,0.2)',
+                borderColor: '#8b5cf6',
+                pointBackgroundColor: '#8b5cf6'
+            }]
+        },
+        options: {responsive:true, scales:{r:{min:0,max:100,ticks:{stepSize:20}}}}
+    });
+}
+
+// ==================== NFC 功能 ====================
+function startNFCPairing() {
+    if(!('NDEFReader' in window)) {
+        alert('此设备不支持Web NFC，请使用备用手动粘贴方式');
+        return;
+    }
+    document.getElementById('nfcReadyArea').classList.remove('hidden');
+    document.getElementById('nfcStartBtn').textContent = '监听中...';
+    document.getElementById('nfcStartBtn').disabled = true;
+
+    nfcReader = new NDEFReader();
+    nfcReader.scan().then(() => {
+        nfcReader.onreading = event => {
+            for(const record of event.message.records) {
+                if(record.recordType === 'text') {
+                    const decoder = new TextDecoder();
+                    try {
+                        receivedNFCData = JSON.parse(decoder.decode(record.data));
+                        showNFCResult(receivedNFCData);
+                    } catch(e) {}
+                }
+            }
+        };
+    }).catch(err => {
+        alert('NFC启动失败：' + err.message);
+        resetNFCBtn();
+    });
+}
+
+function sendMyProfileViaNFC() {
+    if(!currentProfile) return alert('请先生成命格');
+    if(!('NDEFWriter' in window) && !('NDEFReader' in window)) {
+        const data = JSON.stringify({
+            name: currentProfile.name,
+            gender: currentProfile.gender,
+            birthdate: currentProfile.birthdate,
+            birthtime: currentProfile.birthtime,
+            longitude: currentProfile.longitude || 120
+        });
+        navigator.clipboard.writeText(data).then(() => alert('命格已复制到剪贴板，请粘贴给对方'));
+        return;
+    }
+    const ndef = new NDEFReader();
+    ndef.write({records:[{recordType:'text', data: JSON.stringify({
+        name: currentProfile.name,
+        gender: currentProfile.gender,
+        birthdate: currentProfile.birthdate,
+        birthtime: currentProfile.birthtime,
+        longitude: currentProfile.longitude || 120
+    })}]}).then(() => alert('发送成功！')).catch(e => alert('发送失败：'+e.message));
+}
+
+function showNFCResult(data) {
+    document.getElementById('nfcReadyArea').classList.add('hidden');
+    document.getElementById('nfcResultArea').classList.remove('hidden');
+    document.getElementById('nfcResultText').innerHTML = `
+        姓名：${data.name}<br>
+        性别：${data.gender===1?'男':'女'}<br>
+        生日：${data.birthdate}<br>
+    `;
+}
+
+function generateMatchFromNFC() {
+    if(!currentProfile || !receivedNFCData) return alert('缺少数据');
+    const [y,m,d] = receivedNFCData.birthdate.split('-').map(Number);
+    const longitude = receivedNFCData.longitude || 120;
+    const p2 = {
+        name: receivedNFCData.name,
+        gender: receivedNFCData.gender,
+        birthdate: receivedNFCData.birthdate,
+        birthtime: receivedNFCData.birthtime || 0,
+        longitude,
+        y, m, d,
+        bazi: calculateBazi(y,m,d, receivedNFCData.birthtime||0, longitude),
+        ziwei: calculateZiwei(y,m,d, receivedNFCData.birthtime||0, receivedNFCData.gender),
+        astrology: calculateAstrology(y,m,d, receivedNFCData.birthtime||0)
+    };
+    const bazi  = matchBazi(currentProfile, p2);
+    const ziwei = matchZiwei(currentProfile, p2);
+    const astro = matchAstrology(currentProfile, p2);
+    const total = Math.round((bazi.score/40)*100*0.4 + (ziwei.score/35)*100*0.35 + (astro.score/25)*100*0.25);
+    showTab('match');
+    setTimeout(() => displayMatchReport(currentProfile, p2, {bazi,ziwei,astro,composite:total,total}), 200);
+}
+
+function generateMatchFromManual() {
+    const raw = document.getElementById('nfcManualInput').value.trim();
+    try {
+        receivedNFCData = JSON.parse(raw);
+        showNFCResult(receivedNFCData);
+        generateMatchFromNFC();
+    } catch(e) {
+        alert('JSON格式错误，请检查内容');
+    }
+}
+
+function resetNFCBtn() {
+    document.getElementById('nfcStartBtn').textContent = '开启NFC接收';
+    document.getElementById('nfcStartBtn').disabled = false;
+}
+
+// ==================== 多对象对比 ====================
+function loadMyProfileForCompare() {
+    const saved = localStorage.getItem('hcc_myProfile');
+    if(!saved) {
+        if(currentProfile) {
+            myCompareProfile = currentProfile;
+        } else {
+            return alert('请先在"命格"页面生成并保存你的命格');
+        }
+    } else {
+        myCompareProfile = JSON.parse(saved);
+        // 重新计算（防止旧数据缺少新字段）
+        const p = myCompareProfile;
+        const [y,m,d] = p.birthdate.split('-').map(Number);
+        const longitude = p.longitude || 120;
+        myCompareProfile.y = y; myCompareProfile.m = m; myCompareProfile.d = d;
+        myCompareProfile.longitude = longitude;
+        myCompareProfile.bazi     = calculateBazi(y,m,d,p.birthtime,longitude);
+        myCompareProfile.ziwei    = calculateZiwei(y,m,d,p.birthtime,p.gender);
+        myCompareProfile.astrology = calculateAstrology(y,m,d,p.birthtime);
+    }
+    document.getElementById('my-info-compare').innerHTML = `
+        <div class="flex items-center gap-3 p-3 bg-light rounded-xl">
+            <div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-bold">${myCompareProfile.name[0]}</div>
+            <div>
+                <p class="font-medium text-dark">${myCompareProfile.name}</p>
+                <p class="text-gray-400 text-xs">${myCompareProfile.gender===1?'♂':'♀'} ${myCompareProfile.birthdate}</p>
+            </div>
+        </div>
+    `;
+    updateGenerateCompareBtn();
+}
+
+function addCompareObject() {
+    if(compareObjects.length >= 5) return alert('最多添加5个对比对象');
+    document.getElementById('add-object-modal').classList.remove('hidden');
+}
+
+function closeAddObjectModal() {
+    document.getElementById('add-object-modal').classList.add('hidden');
+}
+
+function confirmAddObject() {
+    const name      = document.getElementById('obj-name').value.trim();
+    const gender    = parseInt(document.getElementById('obj-gender').value);
+    const birthdate = document.getElementById('obj-birthdate').value;
+    const birthtime = parseInt(document.getElementById('obj-birthtime').value);
+    const longitude = parseFloat(document.getElementById('obj-lng').value) || 120;
+    if(!name || !birthdate) return alert('请填写完整信息');
+    const [y,m,d] = birthdate.split('-').map(Number);
+    const obj = {
+        name, gender, birthdate, birthtime, longitude, y, m, d,
+        bazi:     calculateBazi(y,m,d,birthtime,longitude),
+        ziwei:    calculateZiwei(y,m,d,birthtime,gender),
+        astrology: calculateAstrology(y,m,d,birthtime)
+    };
+    compareObjects.push(obj);
+    // 同时保存到本地档案（便于后续导入）
+    saveToLocalProfiles(obj);
+    closeAddObjectModal();
+    renderCompareList();
+    updateGenerateCompareBtn();
+    // 清空输入
+    ['obj-name','obj-birthdate'].forEach(id => document.getElementById(id).value = '');
+    alert('已添加并保存到本地档案');
+}
+
+// 保存到本地档案
+function saveToLocalProfiles(profile) {
+    const saved = JSON.parse(localStorage.getItem('hcc_profiles') || '[]');
+    // 检查是否已存在同名档案
+    const idx = saved.findIndex(p => p.name === profile.name);
+    if(idx >= 0) {
+        saved[idx] = profile;
+    } else {
+        saved.push(profile);
+    }
+    localStorage.setItem('hcc_profiles', JSON.stringify(saved));
+}
+
+function importFromSaved() {
+    const saved = JSON.parse(localStorage.getItem('hcc_profiles') || '[]');
+    if(saved.length === 0) return alert('暂无已保存的命格');
+    const list = document.getElementById('import-list');
+    list.innerHTML = saved.map((p, i) => `
+        <div class="flex justify-between items-center p-3 bg-light rounded-xl cursor-pointer hover:bg-primary/10"
+             onclick="selectSavedForCompare(${i})">
+            <div>
+                <span class="font-medium text-dark">${p.name}</span>
+                <span class="text-gray-400 text-xs ml-2">${p.gender===1?'♂':'♀'} ${p.birthdate}</span>
+            </div>
+            <span class="text-primary text-sm">选择</span>
+        </div>
+    `).join('');
+    document.getElementById('import-modal').classList.remove('hidden');
+}
+
+function selectSavedForCompare(i) {
+    if(compareObjects.length >= 5) return alert('最多5个');
+    const saved = JSON.parse(localStorage.getItem('hcc_profiles') || '[]');
+    const p = saved[i];
+    const [y,m,d] = p.birthdate.split('-').map(Number);
+    compareObjects.push({
+        ...p, y, m, d,
+        bazi:     calculateBazi(y,m,d,p.birthtime),
+        ziwei:    calculateZiwei(y,m,d,p.birthtime,p.gender),
+        astrology: calculateAstrology(y,m,d,p.birthtime)
+    });
+    closeImportModal();
+    renderCompareList();
+    updateGenerateCompareBtn();
+}
+
+function closeImportModal() {
+    document.getElementById('import-modal').classList.add('hidden');
+}
+
+function renderCompareList() {
+    const el = document.getElementById('compare-list');
+    if(compareObjects.length === 0) {
+        el.innerHTML = '<p class="text-gray-400 text-sm">暂无对比对象</p>';
+        return;
+    }
+    el.innerHTML = compareObjects.map((p, i) => `
+        <div class="flex justify-between items-center p-3 bg-light rounded-xl">
+            <div>
+                <span class="font-medium text-dark">${p.name}</span>
+                <span class="text-gray-400 text-xs ml-2">${p.gender===1?'♂':'♀'} ${p.birthdate}</span>
+            </div>
+            <button onclick="removeCompareObject(${i})" class="text-danger text-xs px-2 py-1 rounded border border-danger">移除</button>
+        </div>
+    `).join('');
+}
+
+function removeCompareObject(i) {
+    compareObjects.splice(i, 1);
+    renderCompareList();
+    updateGenerateCompareBtn();
+}
+
+function updateGenerateCompareBtn() {
+    const btn = document.getElementById('generate-compare-btn');
+    btn.disabled = !(myCompareProfile && compareObjects.length > 0);
+}
+
+function generateCompareReport() {
+    if(!myCompareProfile || compareObjects.length === 0) return;
+
+    const results = compareObjects.map(p2 => {
+        const bazi  = matchBazi(myCompareProfile, p2);
+        const ziwei = matchZiwei(myCompareProfile, p2);
+        const astro = matchAstrology(myCompareProfile, p2);
+        const total = Math.round((bazi.score/40)*100*0.4 + (ziwei.score/35)*100*0.35 + (astro.score/25)*100*0.25);
+        return {
+            name: p2.name,
+            total,
+            baziScore:  Math.round(bazi.score / 40 * 100),
+            ziweiScore: Math.round(ziwei.score / 35 * 100),
+            astroScore: Math.round(astro.score / 25 * 100)
+        };
+    });
+
+    results.sort((a,b) => b.total - a.total);
+    document.getElementById('compare-result').classList.remove('hidden');
+
+    // 表格
+    const tbody = document.getElementById('compare-table-body');
+    tbody.innerHTML = results.map((r,i) => {
+        const cls = r.total >= 75 ? 'score-high' : r.total >= 55 ? 'score-medium' : 'score-low';
+        return `<tr>
+            <td>${i+1}</td>
+            <td class="font-medium">${r.name}</td>
+            <td class="${cls}">${r.total}</td>
+            <td>${r.baziScore}</td>
+            <td>${r.ziweiScore}</td>
+            <td>${r.astroScore}</td>
+        </tr>`;
+    }).join('');
+
+    // 图表
+    const ctx = document.getElementById('compare-chart');
+    if(compareChart) compareChart.destroy();
+    compareChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: results.map(r => r.name),
+            datasets: [
+                {label:'八字',  data:results.map(r=>r.baziScore),  backgroundColor:'rgba(139,92,246,0.8)'},
+                {label:'紫微',  data:results.map(r=>r.ziweiScore), backgroundColor:'rgba(167,139,250,0.8)'},
+                {label:'星盘',  data:results.map(r=>r.astroScore), backgroundColor:'rgba(196,181,253,0.8)'}
+            ]
+        },
+        options: {responsive:true, scales:{y:{min:0,max:100}}}
+    });
+
+    // 建议
+    const best = results[0];
+    let suggestionText = `根据三维度综合分析，<strong>${best.name}</strong>与您的匹配度最高（${best.total}分）。`;
+    if(best.total >= 75) suggestionText += '整体命理高度契合，强烈建议深入了解。';
+    else if(best.total >= 55) suggestionText += '有一定缘分基础，可以进一步接触。';
+    else suggestionText += '目前匹配度偏低，建议拓展更多候选。';
+    document.getElementById('compare-suggestion').innerHTML = suggestionText;
+}
+
+// ==================== 数据管理 ====================
+function exportAllData() {
+    const data = {
+        profiles: JSON.parse(localStorage.getItem('hcc_profiles') || '[]'),
+        myProfile: JSON.parse(localStorage.getItem('hcc_myProfile') || 'null'),
+        exportTime: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `婚查查数据_${new Date().toLocaleDateString()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function importAllData() {
+    const file = document.getElementById('import-file').files[0];
+    if(!file) return alert('请先选择文件');
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if(data.profiles) localStorage.setItem('hcc_profiles', JSON.stringify(data.profiles));
+            if(data.myProfile) localStorage.setItem('hcc_myProfile', JSON.stringify(data.myProfile));
+            alert('导入成功！');
+            loadSavedProfiles();
+        } catch(err) {
+            alert('文件格式错误');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function clearAllData() {
+    if(!confirm('确定清除所有本地数据？此操作不可撤销。')) return;
+    localStorage.removeItem('hcc_profiles');
+    localStorage.removeItem('hcc_myProfile');
+    currentProfile = null;
+    compareObjects = [];
+    myCompareProfile = null;
+    loadSavedProfiles();
+    alert('已清除所有数据');
+}
+
+// ==================== 标签页切换 ====================
+function showTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.getElementById(`${tab}-tab`).classList.remove('hidden');
+    // 导航高亮
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const navBtn = document.getElementById(`nav-${tab}`);
+    if(navBtn) navBtn.classList.add('active');
+    if(tab === 'data') loadSavedProfiles();
+}
+
+// ==================== 初始化 ====================
+window.addEventListener('DOMContentLoaded', () => {
+    showTab('home');
+    loadSavedProfiles();
+    initDatePickers(); // 初始化自定义日期选择器
+    bindDatePickerEvents(); // 绑定按钮事件（兼容 Android WebView）
+    // 保存到本地按钮（兼容 Android WebView）
+    const saveBtn = document.getElementById('btn-save-profile');
+    if(saveBtn) saveBtn.addEventListener('click', saveProfile);
+    
+    // 初始化用户状态
+    updateUserBadge();
+    loadCurrentUserProfile();
+    
+    // 如有已保存的我的命格，显示
+    const saved = localStorage.getItem('hcc_myProfile');
+    if(saved) {
+        try {
+            const p = JSON.parse(saved);
+            if (p && p.name) {
+                currentProfile = p;
+                showToast('检测到已保存的命格', 'info');
+            }
+        } catch(e) {}
+    }
+});
+</script>
+</body>
+</html>
